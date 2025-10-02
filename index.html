@@ -1,0 +1,2002 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>电子礼簿系统</title>
+    <script src="./static/tailwindcss.js"></script>
+    <script src="./static/xlsx.full.min.js"></script>
+    <script src="./static/crypto-js.min.js"></script>
+    <link href="./static/mermaid.min.css" rel="stylesheet" />
+    <script src="./static/gridjs.umd.js"></script>
+    <link rel="preload" href="./static/bg.webp" as="image" type="image/jpeg" />
+    <style>
+      :root,
+      .theme-festive {
+        --primary-color: #c00;
+        --primary-color-hover: #a00;
+        --primary-text-color: #c00;
+        --primary-bg-light: #fff2f2;
+        --primary-border-color: #ffaaaa;
+        --primary-ring-color: #ef4444;
+        /* red-500 */
+        --header-text-color: #b91c1c;
+        /* red-700 */
+        --button-bg-color: #dc2626;
+        /* red-600 */
+        --button-bg-hover: #b91c1c;
+        /* red-700 */
+        --button-border-color: #dc2626;
+        /* red-600 */
+        --button-text-color: #dc2626;
+        /* red-600 */
+        --link-hover-bg: #fee2e2;
+        /* red-100 */
+        --total-text-color: #ef4444;
+        /* red-500 */
+      }
+
+      .theme-solemn {
+        --primary-color: #374151;
+        /* gray-700 */
+        --primary-color-hover: #1f2937;
+        /* gray-800 */
+        --primary-text-color: #111827;
+        /* gray-900 */
+        --primary-bg-light: #f3f4f6;
+        /* gray-100 */
+        --primary-border-color: #d1d5db;
+        /* gray-300 */
+        --primary-ring-color: #4b5563;
+        /* gray-600 */
+        --header-text-color: #1f2937;
+        /* gray-800 */
+        --button-bg-color: #4b5563;
+        /* gray-600 */
+        --button-bg-hover: #374151;
+        /* gray-700 */
+        --button-border-color: #4b5563;
+        /* gray-600 */
+        --button-text-color: #4b5563;
+        /* gray-600 */
+        --link-hover-bg: #e5e7eb;
+        /* gray-200 */
+        --total-text-color: #374151;
+        /* gray-700 */
+      }
+
+      /* --- End NEW --- */
+
+      body {
+        font-family: "Inter", "Microsoft YaHei", sans-serif;
+      }
+
+      .gift-book-frame {
+        border: 4px solid var(--primary-color);
+        padding: 22px;
+        border-radius: 10px;
+        background-color: var(--primary-bg-light);
+        position: relative;
+        background-size: 15px 15px;
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        cursor: default;
+        min-height: 450px;
+      }
+
+      #gift-book-content,
+      .print-book-content {
+        display: flex;
+        flex-direction: column;
+        border-top: 2px solid var(--primary-border-color);
+        flex: 1;
+      }
+
+      .print-book-content {
+        height: 100%;
+      }
+
+      .gift-book-row {
+        display: flex;
+        width: 100%;
+        flex: 3;
+      }
+
+      .gift-book-row > .book-cell {
+        flex: 1;
+        min-width: 0;
+        position: relative;
+      }
+
+      .book-cell {
+        border-right: 2px solid var(--primary-border-color);
+        border-bottom: 2px solid var(--primary-border-color);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        writing-mode: vertical-rl;
+        text-orientation: mixed;
+        font-weight: bold;
+        font-size: clamp(16px, 1.6vw, 28px);
+        letter-spacing: 7px;
+        font-family: "KaiTi";
+        padding: 10px 0;
+      }
+
+      .book-cell:first-child {
+        border-left: 2px solid var(--primary-border-color);
+      }
+
+      .name-cell:hover {
+        background-color: var(--link-hover-bg);
+      }
+
+      .name-cell .name {
+        color: #333;
+        padding: 15px 0;
+        cursor: pointer;
+        flex: 1;
+        text-align: center;
+      }
+
+      .type-cell {
+        color: var(--primary-color);
+        font-size: clamp(16px, 1.6vw, 22px);
+        padding: 10px 4px;
+        font-family: SimSun, "宋体", NSimSun, serif;
+        font-weight: bold;
+      }
+
+      .amount-cell {
+        color: #333;
+        justify-content: space-around;
+      }
+
+      .amount-chinese {
+        letter-spacing: 1.5px;
+        flex: 6;
+        text-align: center;
+        padding: 15px 0;
+      }
+
+      .amount-numeric,
+      .name-remarks {
+        color: #555;
+        letter-spacing: 1px;
+        writing-mode: lr;
+        line-height: 3;
+        font-size: clamp(10px, 1.3vw, 14px);
+      }
+      .name-remarks {
+        color: var(--primary-color);
+        position: absolute;
+        bottom: 0.2vw;
+        white-space: nowrap;
+      }
+
+      input[type="number"]::-webkit-inner-spin-button,
+      input[type="number"]::-webkit-outer-spin-button {
+        -webkit-appearance: none;
+        margin: 0;
+      }
+
+      input[type="number"] {
+        -moz-appearance: textfield;
+      }
+
+      .themed-header {
+        color: var(--header-text-color);
+      }
+
+      .themed-button-primary {
+        background-color: var(--button-bg-color);
+        color: white;
+      }
+
+      .themed-button-primary:hover {
+        background-color: var(--button-bg-hover);
+      }
+
+      .themed-button-secondary {
+        border-color: var(--button-border-color);
+        color: var(--button-text-color);
+      }
+
+      .themed-button-secondary:hover {
+        background-color: var(--link-hover-bg);
+      }
+
+      .themed-ring:focus {
+        --tw-ring-color: var(--primary-ring-color) !important;
+      }
+
+      .themed-text-radio {
+        color: var(--button-text-color);
+      }
+
+      .themed-peer-checked {
+        --tw-bg-opacity: 1;
+        background-color: var(--button-bg-color);
+      }
+
+      .themed-text {
+        color: var(--total-text-color);
+      }
+
+      .themed-link-hover:hover {
+        background-color: var(--link-hover-bg);
+      }
+
+      .themed-dropdown-text {
+        color: var(--primary-text-color);
+      }
+
+      .themed-dropdown-text:hover {
+        color: var(--primary-color-hover);
+      }
+
+      .peer:checked ~ .toggle-bg {
+        background-color: var(--button-bg-color);
+      }
+      body.printing #app-container {
+        display: none;
+      }
+      #modal.modal-large {
+        max-width: 95vw;
+        width: 95vw;
+      }
+      .gridjs-wrapper {
+        overflow-x: hidden;
+      }
+      td.gridjs-td,
+      th.gridjs-th {
+        padding: 6px;
+      }
+      @media (max-width: 700px) {
+        .amount-numeric,
+        .name-remarks {
+          position: relative;
+          writing-mode: tb;
+        }
+        .gridjs-wrapper {
+          overflow-x: auto;
+          height: 30vh !important;
+        }
+      }
+
+      @media print {
+        @page {
+          size: A4 landscape;
+          margin: 0;
+        }
+
+        body * {
+          visibility: hidden;
+          background-color: var(--primary-bg-light);
+        }
+
+        #print-view,
+        #print-view * {
+          visibility: visible;
+        }
+
+        #print-view {
+          position: absolute;
+          left: 0;
+          top: 0;
+          width: 100%;
+          height: 100%;
+        }
+
+        .print-page {
+          page-break-after: always;
+          width: 100%;
+          height: 100%;
+          padding: 15mm;
+          box-sizing: border-box;
+          display: flex;
+          flex-direction: column;
+          background: url("./static/bg.webp") center/contain no-repeat, var(--primary-bg-light);
+        }
+
+        .print-cover-page {
+          padding: 0;
+          background: none; /* Override default page background for cover */
+          justify-content: center;
+          align-items: center;
+          width: 100%;
+          height: 100%;
+        }
+        .print-cover-page img {
+          object-fit: cover;
+          width: 100%;
+          height: 100%;
+        }
+        /* --- End NEW --- */
+
+        .print-header {
+          text-align: center;
+          margin-bottom: 20px;
+          color: var(--primary-color);
+          font-family: "KaiTi";
+          font-weight: bold;
+          font-size: 38px;
+        }
+
+        .print-footer {
+          flex-shrink: 0;
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-end;
+          font-size: 14px;
+          padding: 10px 25px 0;
+          margin-top: auto;
+          font-family: "KaiTi";
+        }
+
+        .print-footer p {
+          margin: 3px 0;
+        }
+
+        .print-footer-totals {
+          text-align: right;
+        }
+
+        .print-footer .total-amount-print {
+          font-weight: bold;
+          font-size: 16px;
+        }
+        .print-footer-totals .total-amount-print:not(:last-child) {
+          margin-right: 25px;
+        }
+        .print-footer {
+          display: flex;
+          justify-content: space-between;
+          align-items: flex-end;
+        }
+        .print-page-number {
+          text-align: center;
+          flex-grow: 1;
+        }
+        .print-appendix-table {
+          width: 100%;
+          border-collapse: collapse;
+          margin-top: 20px;
+          font-size: 14px;
+          text-align: center;
+        }
+        .print-appendix-table th,
+        .print-appendix-table td {
+          border: 1px solid var(--primary-border-color);
+          padding: 8px;
+          text-align: left;
+          word-break: break-word;
+          font-family: "KaiTi";
+          font-weight: bold;
+          font-size: 18px;
+          letter-spacing: 2px;
+          text-align: center;
+        }
+        .print-appendix-table th {
+          background-color: var(--link-hover-bg);
+          font-weight: bold;
+        }
+        .print-appendix-table th:nth-child(3) {
+          width: 60%;
+        }
+
+        .amount-numeric {
+          display: block;
+        }
+        .book-cell{
+          font-size: 28px !important;
+        }
+        .name-cell .name{
+          padding: 0;
+        }
+        .book-cell:not(.type-cell) {
+          font-family: "KaiTi";
+        }
+        .theme-solemn #print-view {
+          filter: grayscale(100%);
+        }
+        .name-remarks {
+          display: none;
+        }
+      }
+    </style>
+  </head>
+
+  <body class="bg-gray-100 flex items-center justify-center min-h-screen theme-festive">
+    <div id="app-container" class="w-full max-w-7xl mx-auto p-4">
+      <!-- 创建/选择事项界面 -->
+      <div id="setup-screen" class="bg-white p-8 rounded-lg shadow-xl max-w-2xl mx-auto hidden">
+        <h1 class="text-3xl font-bold text-center themed-header mb-6">电子礼簿系统</h1>
+        <div id="select-event-section" class="mb-8 hidden">
+          <h2 class="text-xl font-semibold mb-4 border-b pb-2">选择事项</h2>
+          <div class="flex items-center space-x-4">
+            <select id="event-selector" class="flex-1 p-3 border rounded-lg focus:ring-2 themed-ring">
+              <option value="">请选择一个事项</option>
+            </select>
+            <button id="unlock-event-btn" class="themed-button-primary px-6 py-3 rounded-lg transition duration-300">进入</button>
+          </div>
+        </div>
+        <div>
+          <h2 class="text-xl font-semibold mb-4 border-b pb-2">或 创建新事项</h2>
+          <form id="create-event-form" class="space-y-4">
+            <input type="text" id="event-name" placeholder="事项名称 (例如: 张三李四新婚之喜)" required class="w-full p-3 border rounded-lg focus:ring-2 themed-ring" />
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700">开始时间</label>
+                <div class="flex gap-2">
+                  <input type="date" id="start-date" required class="w-full p-3 border rounded-lg focus:ring-2 themed-ring" />
+                  <input type="time" id="start-time" required class="w-full p-3 border rounded-lg focus:ring-2 themed-ring" />
+                </div>
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700">结束时间</label>
+                <div class="flex gap-2">
+                  <input type="date" id="end-date" required class="w-full p-3 border rounded-lg focus:ring-2 themed-ring" />
+                  <input type="time" id="end-time" required class="w-full p-3 border rounded-lg focus:ring-2 themed-ring" />
+                </div>
+              </div>
+            </div>
+            <input type="text" id="admin-password" placeholder="设置管理密码 (请牢记)" required class="w-full p-3 border rounded-lg focus:ring-2 themed-ring" />
+
+            <details class="group">
+              <summary class="cursor-pointer text-sm font-medium text-gray-600 group-hover:text-gray-900 list-none">
+                <div class="flex items-center">
+                  <span>更多设置</span>
+                  <svg class="w-4 h-4 ml-1 transition-transform transform group-open:rotate-180" fill="currentColor" viewBox="0 0 20 20">
+                    <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"></path>
+                  </svg>
+                </div>
+              </summary>
+              <div class="mt-4 p-4 bg-gray-50 rounded-lg border">
+                <div>
+                  <label for="event-theme" class="block text-sm font-medium text-gray-700">界面风格</label>
+                  <select id="event-theme" class="mt-1 w-full p-3 border rounded-lg focus:ring-2 themed-ring">
+                    <option value="theme-festive" selected>喜庆红 (喜事)</option>
+                    <option value="theme-solemn">肃穆灰 (白事)</option>
+                  </select>
+                  <p class="text-xs text-gray-500 mt-2">为不同性质的事项选择合适的界面配色风格。</p>
+                </div>
+                <div class="mt-4">
+                  <label for="cover-image-upload" class="block text-sm font-medium text-gray-700">礼簿(打印/导出PDF)封面图 (可选)</label>
+                  <input
+                    type="file"
+                    id="cover-image-upload"
+                    accept="image/*"
+                    class="mt-1 w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-gray-200 file:text-gray-700 hover:file:bg-gray-300"
+                  />
+                  <img id="cover-preview" src="" alt="封面预览" class="mt-2 rounded-lg hidden max-w-full h-auto" />
+                  <p class="text-xs text-gray-500 mt-2">尺寸建议595 x 842px, 格式jpg/PNG, 大小不超过2M。</p>
+                </div>
+
+                <div class="mt-4">
+                  <label for="event-voice" class="block text-sm font-medium text-gray-700">语音播报音色</label>
+                  <div class="flex items-center gap-2 mt-1">
+                    <select id="event-voice" class="text-sm flex-grow w-full p-3 border rounded-lg focus:ring-2 themed-ring">
+                      <option value="">默认音色</option>
+                    </select>
+                    <button type="button" id="preview-create-voice-btn" class="themed-button-secondary border p-3 rounded-lg whitespace-nowrap">预览</button>
+                  </div>
+                  <p class="text-xs text-gray-500 mt-2">选择一个喜欢的播报声音。可选项取决于您当前使用的浏览器和操作系统。</p>
+                </div>
+              </div>
+            </details>
+
+            <button type="submit" class="w-full themed-button-primary p-3 rounded-lg transition duration-300 font-bold">创建并进入</button>
+          </form>
+        </div>
+      </div>
+
+      <!-- 礼簿主界面 -->
+      <div id="main-screen" class="hidden">
+        <div class="flex justify-between items-center mb-4">
+          <div class="relative">
+            <div id="event-switcher-trigger" class="flex items-center gap-2 cursor-pointer group">
+              <h1 id="current-event-title" class="text-3xl font-bold themed-dropdown-text"></h1>
+              <svg class="w-6 h-6 themed-dropdown-text" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
+                <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd"></path>
+              </svg>
+            </div>
+            <div id="event-dropdown" class="absolute top-full left-0 mt-2 w-72 bg-white rounded-md shadow-lg z-10 hidden"></div>
+          </div>
+        </div>
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <!-- 左侧录入区 -->
+          <div class="lg:col-span-1 bg-white p-6 rounded-lg shadow-lg">
+            <h2 class="text-2xl font-bold mb-4 text-center border-b pb-2">礼金录入</h2>
+            <form id="add-gift-form" class="space-y-4">
+              <input type="text" id="guest-name" placeholder="姓名" required class="w-full p-3 border rounded-lg focus:ring-2 themed-ring" />
+              <input type="number" id="gift-amount" placeholder="金额 (元)" required min="0" step="0.01" class="w-full p-3 border rounded-lg focus:ring-2 themed-ring" />
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-2">收款类型</label>
+                <div class="flex flex-wrap gap-x-4 gap-y-2">
+                  <label class="flex items-center space-x-2 cursor-pointer"><input type="radio" name="payment-type" value="现金" class="themed-text-radio themed-ring" checked /><span>现金</span></label>
+                  <label class="flex items-center space-x-2 cursor-pointer"><input type="radio" name="payment-type" value="支付宝" class="themed-text-radio themed-ring" /><span>支付宝</span></label>
+                  <label class="flex items-center space-x-2 cursor-pointer"><input type="radio" name="payment-type" value="微信" class="themed-text-radio themed-ring" /><span>微信</span></label>
+                  <label class="flex items-center space-x-2 cursor-pointer"><input type="radio" name="payment-type" value="其他" class="themed-text-radio themed-ring" /><span>其他</span></label>
+                </div>
+              </div>
+              <textarea id="remarks" placeholder="备注 (选填)" rows="3" class="w-full p-3 border rounded-lg focus:ring-2 themed-ring"></textarea>
+              <button id="submit-gift-btn" type="submit" class="w-full themed-button-primary font-bold p-4 rounded-lg transition duration-300 text-lg">确认录入</button>
+            </form>
+            <div class="mt-6 pt-6 border-t">
+              <h3 class="text-xl font-semibold mb-3">功能区</h3>
+              <div class="space-y-3">
+                <div class="relative">
+                  <input type="text" id="search-name" placeholder="按姓名查找..." class="w-full p-3 border rounded-lg focus:ring-2 themed-ring pr-10" />
+                  <svg id="search-icon" class="w-6 h-6 absolute right-3 top-3 text-gray-400 cursor-pointer" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                  </svg>
+                </div>
+                <button id="print-btn" class="w-full themed-button-primary p-3 rounded-lg">打印/另存为PDF</button>
+                <button id="export-excel-btn" class="w-full border themed-button-secondary p-3 rounded-lg">导出为 Excel</button>
+                <button id="stats-btn" class="w-full themed-button-primary p-3 rounded-lg">查看统计</button>
+                <div class="flex items-center justify-between bg-gray-100 p-3 rounded-lg">
+                  <span class="font-medium text-gray-700">语音播报</span>
+                  <label for="speech-toggle" class="relative inline-flex items-center cursor-pointer">
+                    <input type="checkbox" id="speech-toggle" class="sr-only peer" checked />
+                    <div
+                      class="toggle-bg w-11 h-6 themed-button-secondary border peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all"
+                    ></div>
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div>
+          <!-- 右侧展示区 -->
+          <div class="lg:col-span-2">
+            <div id="book-container-wrapper" class="gift-book-frame">
+              <div id="book-footer" class="flex justify-between items-center mb-4 flex-wrap gap-y-2">
+                <div class="flex items-center flex-wrap gap-x-4">
+                  <div><span class="font-bold text-md">本页小计:</span> <span id="page-subtotal" class="text-xl font-bold themed-text">¥0.00</span></div>
+                  <div><span class="font-bold text-md">总金额:</span> <span id="total-amount" class="text-xl font-bold themed-text">¥0.00</span></div>
+                  <div><span class="font-bold text-md">总人数:</span> <span id="total-givers" class="text-xl font-bold themed-text">0</span></div>
+                </div>
+                <div class="flex items-center space-x-2">
+                  <button id="prev-page-btn" class="themed-button-primary p-2 disabled:bg-gray-300 rounded-full w-8 h-8 flex items-center justify-center">&lt;</button>
+                  <span id="page-info" class="font-bold text-lg">第 1 / 1 页</span>
+                  <button id="next-page-btn" class="themed-button-primary p-2 disabled:bg-gray-300 rounded-full w-8 h-8 flex items-center justify-center">&gt;</button>
+                </div>
+              </div>
+              <div id="gift-book-content"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <!-- 模态框/弹窗 -->
+    <div id="modal-container" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
+      <div id="modal" class="bg-white p-6 rounded-lg shadow-xl w-full max-w-md">
+        <h3 id="modal-title" class="text-xl font-bold mb-4 text-center"></h3>
+        <div id="modal-content"></div>
+        <div id="modal-actions" class="mt-6 flex justify-end space-x-3"></div>
+      </div>
+    </div>
+
+    <script>
+      document.addEventListener("DOMContentLoaded", () => {
+        // --- 常量定义 ---
+        const ITEMS_PER_PAGE = 12; // 礼簿每页显示的条目数
+        const MAX_COVER_IMAGE_SIZE = 2 * 1024 * 1024; // 礼簿封面图最大体积 (2MB)
+
+        // --- DOM 元素引用 ---
+        const dom = {
+          setupScreen: document.getElementById("setup-screen"),
+          mainScreen: document.getElementById("main-screen"),
+          eventSelector: document.getElementById("event-selector"),
+          unlockEventBtn: document.getElementById("unlock-event-btn"),
+          createEventForm: document.getElementById("create-event-form"),
+          addGiftForm: document.getElementById("add-gift-form"),
+          giftBookContent: document.getElementById("gift-book-content"),
+          totalAmountEl: document.getElementById("total-amount"),
+          pageSubtotalEl: document.getElementById("page-subtotal"),
+          totalGiversEl: document.getElementById("total-givers"),
+          pageInfoEl: document.getElementById("page-info"),
+          prevPageBtn: document.getElementById("prev-page-btn"),
+          nextPageBtn: document.getElementById("next-page-btn"),
+          currentEventTitleEl: document.getElementById("current-event-title"),
+          eventSwitcherTrigger: document.getElementById("event-switcher-trigger"),
+          eventDropdown: document.getElementById("event-dropdown"),
+          printBtn: document.getElementById("print-btn"),
+          exportExcelBtn: document.getElementById("export-excel-btn"),
+          statsBtn: document.getElementById("stats-btn"),
+          searchNameInput: document.getElementById("search-name"),
+          searchIcon: document.getElementById("search-icon"),
+          selectEventSection: document.getElementById("select-event-section"),
+          speechToggle: document.getElementById("speech-toggle"),
+          modalContainer: document.getElementById("modal-container"),
+          modal: document.getElementById("modal"),
+          modalTitle: document.getElementById("modal-title"),
+          modalContent: document.getElementById("modal-content"),
+          modalActions: document.getElementById("modal-actions"),
+          guestNameInput: document.getElementById("guest-name"),
+          giftAmountInput: document.getElementById("gift-amount"),
+          remarksInput: document.getElementById("remarks"),
+          eventNameInput: document.getElementById("event-name"),
+          startDateInput: document.getElementById("start-date"),
+          startTimeInput: document.getElementById("start-time"),
+          endDateInput: document.getElementById("end-date"),
+          endTimeInput: document.getElementById("end-time"),
+          adminPasswordInput: document.getElementById("admin-password"),
+          eventThemeSelect: document.getElementById("event-theme"),
+          coverImageUpload: document.getElementById("cover-image-upload"),
+          coverPreview: document.getElementById("cover-preview"),
+          eventVoiceSelect: document.getElementById("event-voice"),
+          previewCreateVoiceBtn: document.getElementById("preview-create-voice-btn"),
+        };
+
+        // --- 应用状态管理 ---
+        let db; // IndexedDB 数据库实例
+        let currentEvent = null; // 当前活动的事项
+        let currentPassword = null; // 当前事项的解密密码
+        let gifts = []; // 当前事项的所有礼金记录
+        let currentPage = 1; // 当前礼簿页码
+        let isSpeechEnabled = true; // 是否开启语音播报
+
+        // --- 数据库与加密 ---
+
+        /**
+         * 初始化 IndexedDB 数据库。
+         * 数据库名: GiftRegistryDB, 版本: 1
+         * 包含两个对象仓库: 'events' (存储事项信息) 和 'gifts' (存储礼金记录)
+         */
+        function initDB() {
+          try {
+            const request = indexedDB.open("GiftRegistryDB", 1);
+
+            request.onerror = (event) => {
+              console.error("数据库打开失败:", event.target.errorCode);
+              showAlert("严重错误", "无法访问浏览器数据库。这可能是由于您使用了隐私浏览模式或禁用了相关功能。应用无法正常运行。");
+            };
+
+            request.onsuccess = (event) => {
+              db = event.target.result;
+              // 尝试从 sessionStorage 恢复会话，避免用户刷新后需要重新输入密码
+              if (!tryRestoreSession()) {
+                loadEvents();
+                showSetupScreen();
+              }
+            };
+
+            request.onupgradeneeded = (event) => {
+              const db = event.target.result;
+              db.createObjectStore("events", { keyPath: "id", autoIncrement: true });
+              const giftStore = db.createObjectStore("gifts", { keyPath: "id", autoIncrement: true });
+              // 为 'gifts' 创建索引，方便按事项ID查询
+              giftStore.createIndex("eventId", "eventId", { unique: false });
+            };
+          } catch (e) {
+            console.error("IndexedDB 初始化失败:", e);
+            showAlert("严重错误", "您的浏览器不支持或已禁用 IndexedDB，本应用无法运行。");
+          }
+        }
+
+        /**
+         * 将 IndexedDB 的请求对象转换为 Promise，简化异步操作。
+         * @param {IDBRequest} request - IndexedDB 请求对象。
+         * @returns {Promise<any>}
+         */
+        function promisifyRequest(request) {
+          return new Promise((resolve, reject) => {
+            request.onsuccess = () => resolve(request.result);
+            request.onerror = () => reject(request.error);
+          });
+        }
+
+        // 加密与哈希函数
+        const encryptData = (data, key) => CryptoJS.AES.encrypt(JSON.stringify(data), key).toString();
+        const decryptData = (ciphertext, key) => {
+          try {
+            const bytes = CryptoJS.AES.decrypt(ciphertext, key);
+            return JSON.parse(bytes.toString(CryptoJS.enc.Utf8));
+          } catch (e) {
+            console.error("解密失败:", e);
+            return null;
+          }
+        };
+        const hashPassword = (password) => CryptoJS.SHA256(password).toString();
+
+        // --- 核心业务逻辑 (会话、事项、礼金) ---
+
+        /**
+         * 尝试从 sessionStorage 恢复上一次的会话。
+         * @returns {boolean} 是否成功恢复会话。
+         */
+        function tryRestoreSession() {
+          const savedSession = sessionStorage.getItem("activeEventSession");
+          if (!savedSession) return false;
+
+          try {
+            const { event, encryptedPassword } = JSON.parse(savedSession);
+            const bytes = CryptoJS.AES.decrypt(encryptedPassword, event.passwordHash);
+            const decryptedPassword = bytes.toString(CryptoJS.enc.Utf8);
+
+            if (decryptedPassword) {
+              currentEvent = event;
+              currentPassword = decryptedPassword;
+              startSession();
+              return true;
+            }
+          } catch (e) {
+            console.error("会话恢复失败", e);
+            sessionStorage.removeItem("activeEventSession");
+          }
+          return false;
+        }
+
+        /**
+         * 启动一个事项会话，加载数据并显示主界面。
+         */
+        function startSession() {
+          dom.currentEventTitleEl.textContent = currentEvent.name;
+          applyTheme(currentEvent.theme);
+
+          // 将当前会话（包括加密后的密码）存入 sessionStorage
+          try {
+            const encryptedPassword = CryptoJS.AES.encrypt(currentPassword, currentEvent.passwordHash).toString();
+            sessionStorage.setItem("activeEventSession", JSON.stringify({ event: currentEvent, encryptedPassword }));
+          } catch (e) {
+            console.error("会话存储失败", e);
+          }
+
+          loadGiftsForCurrentEvent();
+          showMainScreen();
+        }
+
+        /**
+         * 从数据库加载所有事项，并填充到下拉选择框中。
+         */
+        async function loadEvents() {
+          if (!db) return;
+          try {
+            const allEvents = await promisifyRequest(db.transaction("events", "readonly").objectStore("events").getAll());
+            dom.eventSelector.innerHTML = '<option value="">请选择一个事项</option>';
+
+            if (allEvents.length > 0) {
+              dom.selectEventSection.classList.remove("hidden");
+              allEvents.forEach((event) => {
+                const option = document.createElement("option");
+                option.value = event.id;
+                option.textContent = event.name;
+                dom.eventSelector.appendChild(option);
+              });
+            } else {
+              dom.selectEventSection.classList.add("hidden");
+            }
+          } catch (error) {
+            console.error("加载事项列表失败:", error);
+            showAlert("错误", "无法加载事项列表。");
+          }
+        }
+
+        /**
+         * 处理创建新事项的表单提交事件。
+         * @param {Event} e - 表单提交事件。
+         */
+        async function handleCreateEventSubmit(e) {
+          e.preventDefault();
+          const name = dom.eventNameInput.value.trim();
+          const startDateTime = `${dom.startDateInput.value}T${dom.startTimeInput.value}`;
+          const endDateTime = `${dom.endDateInput.value}T${dom.endTimeInput.value}`;
+          const password = dom.adminPasswordInput.value;
+          const theme = dom.eventThemeSelect.value;
+          const voiceName = dom.eventVoiceSelect.value;
+          const coverFile = dom.coverImageUpload.files[0];
+
+          if (!name || !password || !startDateTime || !endDateTime) return showAlert("错误", "请填写所有必填项。");
+          if (new Date(startDateTime) >= new Date(endDateTime)) return showAlert("错误", "开始时间必须早于结束时间。");
+
+          let coverImageBase64 = null;
+          if (coverFile) {
+            if (!isCoverFileSizeValid(coverFile)) return;
+            try {
+              coverImageBase64 = await readFileAsBase64(coverFile);
+            } catch (error) {
+              console.error("礼簿封面图读取失败:", error);
+              return showAlert("错误", "礼簿封面图读取失败，请尝试其他图片。");
+            }
+          }
+
+          const newEvent = { name, startDateTime, endDateTime, passwordHash: hashPassword(password), theme, voiceName, coverImage: coverImageBase64 };
+
+          try {
+            const newEventId = await promisifyRequest(db.transaction("events", "readwrite").objectStore("events").add(newEvent));
+            currentEvent = { ...newEvent, id: newEventId };
+            currentPassword = password;
+
+            dom.createEventForm.reset();
+            dom.coverPreview.classList.add("hidden");
+            dom.coverPreview.src = "";
+
+            startSession();
+          } catch (error) {
+            console.error("创建事项失败:", error);
+            showAlert("错误", "创建事项失败，请重试。");
+          }
+        }
+
+        /**
+         * 弹窗要求用户输入密码以解锁并进入选定的事项。
+         * @param {number} eventId - 事项的ID。
+         */
+        async function handleUnlockEvent(eventId) {
+          const event = await promisifyRequest(db.transaction("events", "readonly").objectStore("events").get(eventId));
+          if (!event) return;
+
+          const content = `<input type="password" id="modal-password" class="w-full p-2 border rounded themed-ring" placeholder="请输入密码">`;
+          const actions = [
+            { text: "取消", class: "themed-button-secondary border px-4 py-2 rounded" },
+            {
+              text: "确认",
+              class: "themed-button-primary px-4 py-2 rounded",
+              handler: () => {
+                const passwordInput = document.getElementById("modal-password").value;
+                if (event.passwordHash === hashPassword(passwordInput)) {
+                  currentEvent = event;
+                  currentPassword = passwordInput;
+                  startSession();
+                } else {
+                  showAlert("错误", "密码错误！");
+                }
+              },
+            },
+          ];
+          showModal("输入管理密码", content, actions);
+          setTimeout(() => document.getElementById("modal-password")?.focus(), 50);
+        }
+
+        /**
+         * 从数据库加载当前事项的所有礼金记录。
+         */
+        async function loadGiftsForCurrentEvent() {
+          if (!db || !currentEvent) return;
+          try {
+            const transaction = db.transaction("gifts", "readonly");
+            const index = transaction.objectStore("gifts").index("eventId");
+            const encryptedGifts = await promisifyRequest(index.getAll(currentEvent.id));
+
+            gifts = encryptedGifts.map((g) => ({ ...g, data: decryptData(g.encryptedData, currentPassword) })).filter((g) => g.data !== null);
+            currentPage = Math.ceil(gifts.length / ITEMS_PER_PAGE) || 1;
+            render();
+          } catch (error) {
+            console.error("加载礼金列表失败:", error);
+          }
+        }
+
+        /**
+         * 处理新增礼金的表单提交，包含重复录入的检查逻辑。
+         * @param {Event} e - 表单提交事件。
+         */
+        async function handleAddGiftSubmit(e) {
+          e.preventDefault();
+          const name = dom.guestNameInput.value.trim();
+          const amountStr = dom.giftAmountInput.value;
+          const type = document.querySelector('input[name="payment-type"]:checked')?.value;
+          const remarks = dom.remarksInput.value.trim();
+
+          if (!name || !amountStr || !type) return showAlert("信息不完整", "请输入姓名、金额并选择收款类型。");
+
+          const amount = parseFloat(amountStr);
+          if (isNaN(amount) || amount < 0) return showAlert("金额无效", "请输入一个有效的非负金额。");
+
+          // 检查是否已存在同名或同名同金额的记录
+          const sameNameGifts = gifts.filter((g) => g.data?.name === name);
+          const exactMatchExists = sameNameGifts.some((g) => g.data?.amount === amount);
+
+          showGiftConfirmationModal(name, amount, remarks, sameNameGifts.length > 0, exactMatchExists);
+        }
+
+        /**
+         * 最终执行保存礼金记录到数据库的操作。
+         * @param {object} giftData - 包含姓名、金额、类型、备注等信息的礼金数据对象。
+         */
+        async function saveGift(giftData) {
+          const isOutOfTime = new Date() < new Date(currentEvent.startDateTime) || new Date() > new Date(currentEvent.endDateTime);
+
+          // 如果超出事项时间范围，需要输入管理密码才能补录
+          if (isOutOfTime) {
+            const authorized = await requestAdminPassword("礼金补录", "当前已超出有效录入时间，请输入管理密码进行补录。");
+            if (!authorized) {
+              closeModal();
+              return showAlert("密码错误", "管理密码不正确，无法录入。");
+            }
+          }
+
+          try {
+            const fullGiftData = { ...giftData, timestamp: new Date().toISOString() };
+            const encryptedData = encryptData(fullGiftData, currentPassword);
+            const newGiftRecord = { eventId: currentEvent.id, encryptedData };
+            await promisifyRequest(db.transaction("gifts", "readwrite").objectStore("gifts").add(newGiftRecord));
+
+            closeModal();
+            dom.addGiftForm.reset();
+            document.querySelector('input[name="payment-type"][value="现金"]').checked = true;
+            dom.guestNameInput.focus();
+            speakGift(giftData.name, giftData.amount); // 语音播报
+            await loadGiftsForCurrentEvent();
+          } catch (error) {
+            closeModal();
+            console.error("录入礼金失败:", error);
+            showAlert("错误", "录入礼金失败。");
+          }
+        }
+
+        /**
+         * 统一处理需要管理员权限的操作，弹窗要求输入密码。
+         * @param {string} title - 弹窗标题。
+         * @param {string} message - 弹窗提示信息。
+         * @returns {Promise<boolean>} - 密码是否正确。
+         */
+        function requestAdminPassword(title, message) {
+          return new Promise((resolve) => {
+            const content = `<p class="text-sm text-gray-600 mb-3">${message}</p>
+                       <input type="password" id="override-password" class="w-full p-2 border rounded themed-ring" placeholder="请输入管理密码">`;
+            const actions = [
+              { text: "取消", class: "themed-button-secondary border px-4 py-2 rounded", handler: () => resolve(false) },
+              {
+                text: "确认",
+                class: "themed-button-primary px-4 py-2 rounded",
+                handler: () => {
+                  const passwordInput = document.getElementById("override-password").value;
+                  resolve(hashPassword(passwordInput) === currentEvent.passwordHash);
+                },
+              },
+            ];
+            showModal(title, content, actions);
+            setTimeout(() => document.getElementById("override-password")?.focus(), 50);
+          });
+        }
+
+        // --- UI 渲染与更新 ---
+
+        /**
+         * 主渲染函数，调用各个子模块进行页面更新。
+         */
+        function render() {
+          renderGiftBook();
+          updateTotals();
+          updatePageInfo();
+        }
+
+        /**
+         * 渲染礼簿内容区域。
+         * @param {HTMLElement} container - 渲染的目标容器。
+         * @param {Array} items - 需要渲染的礼金记录数组。
+         */
+        function renderGiftBook(container = dom.giftBookContent, items = gifts.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE)) {
+          container.innerHTML = "";
+          const nameRow = document.createElement("div");
+          nameRow.className = "gift-book-row";
+          const typeRow = document.createElement("div");
+          typeRow.className = "gift-book-row flex-1";
+          const amountRow = document.createElement("div");
+          amountRow.className = "gift-book-row";
+
+          for (let i = 0; i < ITEMS_PER_PAGE; i++) {
+            const gift = items[i];
+            const giftIndex = (currentPage - 1) * ITEMS_PER_PAGE + i;
+
+            // 姓名栏
+            const nameCell = document.createElement("div");
+            nameCell.className = "book-cell name-cell";
+            if (gift?.data) {
+              nameCell.innerHTML = `<div class="name">${gift.data.name}</div>
+                              ${gift.data.remarks ? '<div class="name-remarks">*已备注</div>' : ""}`;
+              nameCell.dataset.giftIndex = giftIndex;
+            }
+            nameRow.appendChild(nameCell);
+
+            // 贺礼/奠仪栏
+            const typeCell = document.createElement("div");
+            typeCell.className = "book-cell type-cell";
+            typeCell.textContent = currentEvent.theme === "theme-solemn" ? "奠 仪" : "贺 礼";
+            typeRow.appendChild(typeCell);
+
+            // 金额栏
+            const amountCell = document.createElement("div");
+            amountCell.className = "book-cell amount-cell";
+            if (gift?.data) {
+              amountCell.innerHTML = `<div class="amount-chinese">${amountToChinese(gift.data.amount)}</div>
+                                <div class="amount-numeric">¥${gift.data.amount}</div>`;
+            }
+            amountRow.appendChild(amountCell);
+          }
+          container.append(nameRow, typeRow, amountRow);
+        }
+
+        /**
+         * 更新页面顶部的总计、小计等信息。
+         */
+        function updateTotals() {
+          const itemsOnPage = gifts.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
+          const pageSubtotal = itemsOnPage.reduce((sum, gift) => sum + (gift.data?.amount || 0), 0);
+          dom.pageSubtotalEl.textContent = formatCurrency(pageSubtotal);
+
+          const stats = calculateStats();
+          dom.totalAmountEl.textContent = formatCurrency(stats.totalAmount);
+          dom.totalGiversEl.textContent = stats.totalGivers;
+        }
+
+        /**
+         * 更新分页信息和按钮状态。
+         */
+        function updatePageInfo() {
+          const totalPages = Math.ceil(gifts.length / ITEMS_PER_PAGE) || 1;
+          dom.pageInfoEl.textContent = `第 ${currentPage} / ${totalPages} 页`;
+          dom.prevPageBtn.disabled = currentPage === 1;
+          dom.nextPageBtn.disabled = currentPage === totalPages;
+        }
+
+        // --- 界面切换与主题 ---
+
+        function showMainScreen() {
+          dom.setupScreen.classList.add("hidden");
+          dom.mainScreen.classList.remove("hidden");
+        }
+
+        function showSetupScreen() {
+          dom.mainScreen.classList.add("hidden");
+          dom.setupScreen.classList.remove("hidden");
+          // 重置状态
+          currentEvent = null;
+          currentPassword = null;
+          gifts = [];
+          dom.eventSelector.value = "";
+          sessionStorage.removeItem("activeEventSession");
+          loadEvents();
+          applyTheme("theme-festive"); // 默认回到喜庆主题
+          setDefaultTimes();
+        }
+
+        function applyTheme(themeName) {
+          document.body.className = `bg-gray-100 flex items-center justify-center min-h-screen ${themeName || "theme-festive"}`;
+        }
+
+        // --- 模态框 (Modal) ---
+
+        /**
+         * 显示一个通用的模态框。
+         * @param {string} title - 模态框标题。
+         * @param {string} content - 模态框内容的 HTML 字符串。
+         * @param {Array<object>} actions - 包含按钮配置的数组, {text, class, handler, keepOpen}。
+         */
+        function showModal(title, content, actions = []) {
+          dom.modalTitle.innerHTML = title;
+          dom.modalContent.innerHTML = content;
+          dom.modalActions.innerHTML = "";
+          actions.forEach((action) => {
+            const button = document.createElement("button");
+            button.textContent = action.text;
+            button.className = action.class;
+            button.onclick = () => {
+              action.handler?.();
+              if (!action.keepOpen) closeModal();
+            };
+            dom.modalActions.appendChild(button);
+          });
+          dom.modalContainer.classList.remove("hidden");
+          document.body.style.overflow = "hidden"; // 禁止背景滚动
+        }
+
+        function closeModal() {
+          dom.modalContainer.classList.add("hidden");
+          dom.modal.classList.remove("modal-large"); // 恢复默认大小
+          document.body.style.overflow = "auto"; // 恢复背景滚动
+        }
+
+        function showAlert(title, message, isError = true) {
+          showModal(title, `<p>${message}</p>`, [{ text: "确定", class: "themed-button-primary px-4 py-2 rounded" }]);
+        }
+
+        /**
+         * 根据是否存在同名或重复记录，显示不同的确认弹窗。
+         */
+        function showGiftConfirmationModal(name, amount, remarks, nameExists, exactMatchExists) {
+          let modalTitle, modalContent;
+
+          if (exactMatchExists) {
+            modalTitle = "重复信息确认";
+            modalContent = `
+        <div class="space-y-3 text-left">
+          <div class="p-3 bg-red-100 border-l-4 border-red-500 text-red-800 rounded-md">
+            <strong class="font-bold">警告：</strong>
+            <p class="text-sm">系统中已存在“相同姓名”且“相同金额”的记录，为避免重复录入，请仔细核对。</p>
+          </div>
+          <p><strong>来宾姓名:</strong> <span class="text-lg">${name}</span></p>
+          <p><strong>金额:</strong> <span class="font-bold text-xl themed-text">${formatCurrency(amount)}</span></p>
+          <div>
+            <label for="modal-remarks-input" class="block text-sm font-medium text-gray-700">如非重复，建议填写备注(选填)</label>
+            <textarea id="modal-remarks-input" placeholder="建议备注宾客与东家关系或地址" class="w-full mt-1 p-2 border rounded themed-ring" rows="2">${remarks}</textarea>
+          </div>
+        </div>`;
+          } else if (nameExists) {
+            modalTitle = "同名提醒与信息确认";
+            modalContent = `
+        <div class="space-y-3 text-left">
+          <div class="p-2 bg-yellow-100 text-yellow-800 rounded-md text-sm">
+            <strong>注意：</strong>系统中已存在名为 <strong>${name}</strong> 的记录。为避免混淆，建议您添加备注。
+          </div>
+          <p><strong>来宾姓名:</strong> <span class="text-lg">${name}</span></p>
+          <p><strong>金额:</strong> <span class="font-bold text-xl themed-text">${formatCurrency(amount)}</span></p>
+          <div>
+            <label for="modal-remarks-input" class="block text-sm font-medium text-gray-700">备注 (选填)</label>
+            <textarea id="modal-remarks-input" placeholder="建议备注宾客与东家关系或地址" class="w-full mt-1 p-2 border rounded themed-ring" rows="2">${remarks}</textarea>
+          </div>
+        </div>`;
+          } else {
+            modalTitle = "请确认录入信息";
+            modalContent = `
+        <div class="space-y-3 text-left">
+          <p><strong>来宾姓名:</strong> <span class="text-lg">${name}</span></p>
+          <p><strong>数字金额:</strong> <span class="font-bold text-xl themed-text">${formatCurrency(amount)}</span></p>
+          <p><strong>大写金额:</strong> <span class="font-bold text-xl themed-text">${amountToChinese(amount)}</span></p>
+        </div>`;
+          }
+
+          const confirmationHandler = () => {
+            const finalRemarks = document.getElementById("modal-remarks-input")?.value.trim() ?? remarks;
+            const type = document.querySelector('input[name="payment-type"]:checked')?.value;
+            saveGift({ name, amount, type, remarks: finalRemarks });
+          };
+
+          showModal(modalTitle, modalContent, [
+            { text: "返回修改", class: "themed-button-secondary border px-4 py-2 rounded" },
+            { text: "确认提交", class: "themed-button-primary px-4 py-2 rounded", handler: confirmationHandler, keepOpen: true },
+          ]);
+        }
+
+        /**
+         * 显示单个礼金记录的详情，并提供修改备注的功能。
+         * @param {number} giftIndex - 礼金记录在 `gifts` 数组中的索引。
+         */
+        function showGiftDetailsModal(giftIndex) {
+          const giftObject = gifts[giftIndex];
+          if (!giftObject) return;
+          const { data: gift } = giftObject;
+
+          const content = `
+      <div class="space-y-2 text-left">
+        <p><strong>姓名:</strong> ${gift.name}</p>
+        <p><strong>金额:</strong> ${formatCurrency(gift.amount)} (${gift.type})</p>
+        <div id="remarks-container">
+          <p><strong>备注:</strong>
+            <span class="pl-2">${gift.remarks || "无"}</span>
+            <button id="edit-remarks-btn" class="ml-2 themed-text hover:underline">修改</button>
+          </p>
+        </div>
+        <p><strong>录入时间:</strong> ${new Date(gift.timestamp).toLocaleString("zh-CN")}</p>
+      </div>`;
+          showModal(`${gift.name} 的礼金信息`, content, [{ text: "关闭", class: "border themed-button-secondary px-4 py-2 rounded" }]);
+
+          document.getElementById("edit-remarks-btn").onclick = () => enableRemarkEditing(giftObject, giftIndex);
+        }
+
+        /**
+         * 在详情弹窗中，将备注显示区域替换为可编辑的文本域。
+         */
+        function enableRemarkEditing(giftObject, giftIndex) {
+          const remarksContainer = document.getElementById("remarks-container");
+          remarksContainer.innerHTML = `
+      <label for="remarks-textarea" class="block font-bold">修改备注:</label>
+      <textarea id="remarks-textarea" class="w-full p-2 border rounded themed-ring mt-1" rows="3" placeholder="按 Ctrl + Enter 可快速保存">${giftObject.data.remarks || ""}</textarea>
+      <div class="mt-2 text-right">
+        <button id="save-remarks-btn" class="themed-button-primary px-3 py-1 rounded">保存</button>
+      </div>`;
+
+          const saveButton = document.getElementById("save-remarks-btn");
+          const remarksTextarea = document.getElementById("remarks-textarea");
+          remarksTextarea.focus();
+          remarksTextarea.selectionStart = remarksTextarea.value.length; // 光标移到末尾
+
+          const saveRemarks = async () => {
+            const newRemarks = remarksTextarea.value.trim();
+            const updatedGiftData = { ...giftObject.data, remarks: newRemarks };
+            const encryptedData = encryptData(updatedGiftData, currentPassword);
+            const recordToUpdate = { ...giftObject, encryptedData };
+            try {
+              await promisifyRequest(db.transaction("gifts", "readwrite").objectStore("gifts").put(recordToUpdate));
+              gifts[giftIndex].data.remarks = newRemarks; // 同步更新内存中的数据
+              render(); // 重新渲染以更新备注星号
+              closeModal();
+              showAlert("成功", "备注已成功更新。", false);
+            } catch (error) {
+              showAlert("错误", "更新备注失败。");
+            }
+          };
+
+          saveButton.onclick = saveRemarks;
+          remarksTextarea.addEventListener("keydown", (e) => {
+            if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) {
+              e.preventDefault();
+              saveRemarks();
+            }
+          });
+        }
+
+        // --- 功能模块 (打印, 导出, 统计, 搜索) ---
+
+        /**
+         * 生成所有用于打印的页面 HTML 内容，并触发浏览器打印功能。
+         */
+        /**
+         * 生成所有用于打印的页面 HTML 内容，并触发浏览器打印功能。
+         * 核心修复：此函数现在会等待封面图加载完成后再触发打印，以解决首次打印不显示封面的问题。
+         */
+        function prepareForPrint() {
+          if (gifts.length === 0) {
+            return showAlert("无法打印", "当前事项没有任何礼金记录，无需打印。");
+          }
+
+          let printView = document.getElementById("print-view");
+          if (printView) printView.remove();
+          printView = document.createElement("div");
+          printView.id = "print-view";
+
+          const eventCreationDate = new Date(currentEvent.startDateTime).toLocaleDateString("zh-CN");
+          document.title = `${currentEvent.name}礼金明细-${eventCreationDate}`;
+
+          // 1. 将打印的核心逻辑封装成一个函数
+          // 这个函数将在封面加载后（或无封面时）被调用
+          const executePrint = () => {
+            // 2. 生成礼金明细页 (这部分逻辑不变)
+            const totalGiftPages = Math.ceil(gifts.length / ITEMS_PER_PAGE) || 1;
+            for (let i = 0; i < totalGiftPages; i++) {
+              const pageGifts = gifts.slice(i * ITEMS_PER_PAGE, (i + 1) * ITEMS_PER_PAGE);
+              const pageContainer = document.createElement("div");
+              pageContainer.className = "print-page";
+              const content = document.createElement("div");
+              content.className = "print-book-content";
+
+              if (i === 0) {
+                pageContainer.innerHTML += `<h1 class="print-header">${currentEvent.name}礼金明细</h1>`;
+              }
+
+              renderGiftBook(content, pageGifts);
+              pageContainer.appendChild(content);
+
+              const pageSubtotal = pageGifts.reduce((sum, gift) => sum + (gift.data?.amount || 0), 0);
+              const stats = calculateStats();
+              const isLastPage = i === totalGiftPages - 1;
+
+              pageContainer.innerHTML += `
+          <div class="print-footer">
+            <p>日期: ${eventCreationDate}</p>
+            <p class="print-page-number">第 ${i + 1} / ${totalGiftPages} 页</p>
+            <div class="print-footer-totals">
+              <p>本页小计: ${formatCurrency(pageSubtotal)}</p>
+              ${
+                isLastPage
+                  ? `
+                <span class="total-amount-print">送礼总人数: ${stats.totalGivers}</span>
+                <span class="ml-3 total-amount-print">礼金总金额: ${formatCurrency(stats.totalAmount)}</span>`
+                  : ""
+              }
+            </div>
+          </div>`;
+              printView.appendChild(pageContainer);
+            }
+
+            // 3. 生成附录页 (逻辑不变)
+            appendAppendixPages(printView, eventCreationDate);
+
+            // 4. 将准备好的所有内容添加到页面并打印
+            document.body.appendChild(printView);
+            document.body.classList.add("printing");
+
+            // 使用 setTimeout 0 毫秒将打印操作推迟到下一个事件循环
+            // 这可以确保DOM元素（特别是图片）有足够的时间被浏览器“绘制”出来
+            setTimeout(() => {
+              window.print();
+              //打印后清理
+              setTimeout(() => {
+                document.body.classList.remove("printing");
+                document.getElementById("print-view")?.remove();
+              }, 100);
+            }, 0);
+          };
+
+          // --- 核心修复逻辑 ---
+          // 5. 判断是否有封面图
+          if (currentEvent.coverImage) {
+            const coverPage = document.createElement("div");
+            coverPage.className = "print-page print-cover-page";
+            const coverImg = document.createElement("img");
+
+            // 关键：为图片设置 onload 事件监听器
+            coverImg.onload = () => {
+              // 图片加载成功后，才执行打印逻辑
+              executePrint();
+            };
+            // 容错处理：如果图片加载失败，也继续执行不带封面的打印
+            coverImg.onerror = () => {
+              console.error("封面图加载失败，将不带封面进行打印。");
+              coverPage.remove(); // 移除损坏的封面页
+              executePrint();
+            };
+
+            printView.appendChild(coverPage);
+            coverPage.appendChild(coverImg);
+
+            // 最后再设置 src 属性，以触发加载
+            coverImg.src = currentEvent.coverImage;
+          } else {
+            // 如果没有封面图，直接执行打印逻辑
+            executePrint();
+          }
+        }
+
+        /**
+         * 生成并附加备注附录页面到打印视图。
+         */
+        function appendAppendixPages(printView, dateString) {
+          const remarkedItems = gifts.map((gift, index) => ({ ...gift, originalIndex: index })).filter((g) => g.data && g.data.remarks);
+
+          if (remarkedItems.length === 0) return;
+
+          const APPENDIX_ROWS_PER_PAGE = 10;
+          const totalAppendixPages = Math.ceil(remarkedItems.length / APPENDIX_ROWS_PER_PAGE);
+
+          for (let j = 0; j < totalAppendixPages; j++) {
+            const pageItems = remarkedItems.slice(j * APPENDIX_ROWS_PER_PAGE, (j + 1) * APPENDIX_ROWS_PER_PAGE);
+            const appendixPage = document.createElement("div");
+            appendixPage.className = "print-page";
+
+            const tableRows = pageItems
+              .map(
+                (item) => `
+              <tr>
+                <td>${item.data.name}</td>
+                <td>第${Math.floor(item.originalIndex / ITEMS_PER_PAGE) + 1}页第${(item.originalIndex % ITEMS_PER_PAGE) + 1}位</td>
+                <td>${item.data.remark || item.data.remarks}</td>
+              </tr>
+          `
+              )
+              .join("");
+
+            appendixPage.innerHTML = `
+              <h1 class="print-header">附录：宾客备注</h1>
+              <table class="print-appendix-table">
+                  <thead>
+                      <tr><th>姓名</th><th>记录索引</th><th>备注信息</th></tr>
+                  </thead>
+                  <tbody>${tableRows}</tbody>
+              </table>
+              <div class="print-footer">
+                  <p>日期: ${dateString}</p>
+                  <p class="print-page-number">附录 第 ${j + 1} / ${totalAppendixPages} 页</p>
+                  <div class="print-footer-totals" style="opacity: 0;"></div>
+              </div>`;
+            printView.appendChild(appendixPage);
+          }
+        }
+
+        /**
+         * 将当前礼金数据导出为 Excel 文件。
+         */
+        function exportToExcel() {
+          const dataToExport = gifts.map((g) => ({
+            姓名: g.data.name,
+            金额: g.data.amount,
+            收款类型: g.data.type,
+            备注: g.data.remarks,
+            录入时间: new Date(g.data.timestamp).toLocaleString("zh-CN"),
+          }));
+          const worksheet = XLSX.utils.json_to_sheet(dataToExport);
+          const workbook = XLSX.utils.book_new();
+          XLSX.utils.book_append_sheet(workbook, worksheet, "礼金明细");
+          XLSX.writeFile(workbook, `${currentEvent.name}_礼金明细.xlsx`);
+        }
+
+        /**
+         * 计算统计数据。
+         * @returns {{totalAmount: number, totalGivers: number, byType: object}}
+         */
+        function calculateStats() {
+          const stats = {
+            totalAmount: 0,
+            totalGivers: gifts.length,
+            byType: { 现金: 0, 支付宝: 0, 微信: 0, 其他: 0 },
+          };
+          gifts.forEach(({ data }) => {
+            if (data) {
+              stats.totalAmount += data.amount;
+              stats.byType[data.type] = (stats.byType[data.type] || 0) + data.amount;
+            }
+          });
+          return stats;
+        }
+
+        /**
+         * 显示统计数据弹窗，包含汇总信息和可搜索、排序的表格。
+         */
+        function showStatistics() {
+          dom.modal.classList.add("modal-large");
+          const stats = calculateStats();
+          const statsHtml = `
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div id="grid-container" class="md:col-span-3"></div>
+        <div class="space-y-4">
+          <div class="flex justify-between p-3 bg-gray-100 rounded-lg">
+              <span class="font-bold">总送礼人数:</span>
+              <span class="font-bold themed-text">${stats.totalGivers} 人</span>
+          </div>
+          <div class="flex justify-between p-3 bg-gray-100 rounded-lg">
+              <span class="font-bold">总礼金金额:</span>
+              <span class="font-bold themed-text">${formatCurrency(stats.totalAmount)}</span>
+          </div>
+          <div class="border-t pt-4 mt-4">
+              <h4 class="font-semibold mb-2">按收款方式统计:</h4>
+              <ul class="space-y-2">${Object.entries(stats.byType)
+                .map(([type, amount]) => `<li class="flex justify-between"><span>${type}:</span> <span>${formatCurrency(amount)}</span></li>`)
+                .join("")}</ul>
+          </div>
+        </div>
+      </div>`;
+
+          showModal("礼金统计详情", statsHtml, [{ text: "关闭", class: "border themed-button-secondary px-4 py-2 rounded" }]);
+
+          const tableData = gifts.map((g) => [g.data.name, g.data.amount, g.data.remarks || "无", g.data.type, new Date(g.data.timestamp).toLocaleString("zh-CN")]);
+
+          new gridjs.Grid({
+            columns: ["姓名", "金额 (元)", "备注", "收款类型", "登记时间"],
+            data: tableData,
+            search: true,
+            sort: true,
+            fixedHeader: true,
+            width: "100%",
+            height: "50vh",
+            language: {
+              search: { placeholder: "搜索..." },
+              pagination: { previous: "上一页", next: "下一页", showing: "显示", results: () => "条结果", to: "到", of: "共" },
+              loading: "加载中...",
+              noRecordsFound: "未找到匹配的记录",
+              error: "获取数据时发生错误",
+            },
+            style: { th: { "background-color": "var(--primary-color)", color: "#fff" } },
+          }).render(document.getElementById("grid-container"));
+        }
+
+        /**
+         * 处理姓名搜索。
+         */
+        function handleSearch() {
+          const searchTerm = dom.searchNameInput.value.trim();
+          if (!searchTerm) {
+            return showAlert("提示", "请输入姓名进行搜索。", false);
+          }
+          const results = gifts.map((g, index) => ({ ...g, originalIndex: index })).filter((g) => g.data?.name.includes(searchTerm));
+
+          if (results.length === 0) {
+            return showAlert("查找结果", `没有找到姓名为 “${searchTerm}” 的记录。`);
+          }
+
+          const resultsHtml = results
+            .map(
+              (r) => `
+        <div class="p-3 border-b flex justify-between items-center">
+          <div>
+            <p><strong>姓名:</strong> ${r.data.name}</p>
+            <p><strong>金额:</strong> ${r.data.amount.toFixed(2)} 元 (${r.data.type})</p>
+            ${r.data.remarks ? `<p class="text-red-500"><strong>备注:</strong> ${r.data.remarks}</p>` : ""}
+          </div>
+          <button class="view-details-btn themed-button-primary px-3 py-1 rounded" data-gift-index="${r.originalIndex}">查看详情</button>
+        </div>`
+            )
+            .join("");
+          showModal(`“${searchTerm}” 的搜索结果`, `<div class="max-h-80 overflow-y-auto">${resultsHtml}</div>`, [{ text: "关闭", class: "themed-button-secondary border px-4 py-2 rounded" }]);
+        }
+
+        /**
+         * 显示一个用于修改当前事项名称、礼簿封面图和语音音色的弹窗。
+         */
+        async function showEditEventInfoModal() {
+          let coverImageForUpdate = currentEvent.coverImage;
+          let shouldRemoveCover = false;
+
+          // --- 修改：在HTML中增加了音色选择的 <select> 和预览按钮 ---
+          const content = `
+    <div class="space-y-4 text-left">
+        <div>
+            <label for="edit-event-name-input" class="block text-sm font-medium text-gray-700">事项名称</label>
+            <input type="text" id="edit-event-name-input" class="w-full mt-1 p-2 border rounded themed-ring" value="${currentEvent.name}">
+        </div>
+        
+        <!-- 修改：语音音色设置，增加了预览按钮 -->
+        <div>
+            <label for="edit-event-voice" class="block text-sm font-medium text-gray-700">语音播报音色</label>
+            <div class="flex items-center gap-2 mt-1">
+                <select id="edit-event-voice" class="text-sm flex-grow w-full p-2 border rounded themed-ring">
+                    <option value="">默认音色</option>
+                </select>
+                <button type="button" id="preview-edit-voice-btn" class="themed-button-secondary border p-2 rounded whitespace-nowrap">预览</button>
+            </div>
+        </div>
+
+        <div>
+            <label class="block text-sm font-medium text-gray-700">礼簿(打印/导出PDF)封面图</label>
+            <img id="edit-cover-preview" src="${currentEvent.coverImage || ""}" alt="封面预览" class="my-2 rounded-lg ${!currentEvent.coverImage ? "hidden" : ""} max-w-full h-auto max-h-48 object-contain">
+            <p class="text-xs text-gray-500 mt-2">尺寸建议842 x 595px, 格式jpg/PNG, 大小不超过2M。</p>
+            <input type="file" id="edit-cover-image-upload" accept="image/*" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-gray-200 file:text-gray-700 hover:file:bg-gray-300"/>
+            ${currentEvent.coverImage ? '<button id="remove-cover-btn" class="mt-2 text-sm text-red-600 hover:underline">删除当前礼簿封面图</button>' : ""}
+        </div>
+    </div>`;
+
+          // ... (showModal 调用和保存逻辑保持不变) ...
+          showModal("设置事项", content, [
+            { text: "取消", class: "themed-button-secondary border px-4 py-2 rounded" },
+            {
+              text: "保存",
+              class: "themed-button-primary px-4 py-2 rounded",
+              handler: async () => {
+                // ... 这部分保存逻辑完全不变 ...
+                const newName = document.getElementById("edit-event-name-input").value.trim();
+                const newVoiceName = document.getElementById("edit-event-voice").value;
+                if (!newName) return showAlert("错误", "事项名称不能为空！");
+
+                const newCoverFile = document.getElementById("edit-cover-image-upload").files[0];
+                if (newCoverFile) {
+                  if (!isCoverFileSizeValid(newCoverFile)) return;
+                  try {
+                    coverImageForUpdate = await readFileAsBase64(newCoverFile);
+                  } catch (error) {
+                    console.error("礼簿封面图读取失败:", error);
+                    return showAlert("错误", "礼簿封面图读取失败，请尝试其他图片。");
+                  }
+                } else if (shouldRemoveCover) {
+                  coverImageForUpdate = null;
+                }
+
+                const updatedEvent = { ...currentEvent, name: newName, voiceName: newVoiceName, coverImage: coverImageForUpdate };
+                try {
+                  await promisifyRequest(db.transaction("events", "readwrite").objectStore("events").put(updatedEvent));
+
+                  currentEvent.name = newName;
+                  currentEvent.voiceName = newVoiceName;
+                  currentEvent.coverImage = coverImageForUpdate;
+                  dom.currentEventTitleEl.textContent = newName;
+
+                  const sessionData = JSON.parse(sessionStorage.getItem("activeEventSession"));
+                  if (sessionData) {
+                    sessionStorage.setItem("activeEventSession", JSON.stringify({ event: currentEvent, encryptedPassword: sessionData.encryptedPassword }));
+                  }
+                  showAlert("成功", "事项信息已成功更新。", false);
+                } catch (error) {
+                  console.error("更新事项信息失败:", error);
+                  showAlert("错误", "更新事项信息失败。");
+                }
+              },
+            },
+          ]);
+
+          const voiceSelectElement = document.getElementById("edit-event-voice");
+          populateVoiceList(voiceSelectElement, currentEvent.voiceName);
+          if (speechSynthesis.onvoiceschanged !== undefined) {
+            speechSynthesis.onvoiceschanged = () => populateVoiceList(voiceSelectElement, currentEvent.voiceName);
+          }
+
+          // --- 新增：为弹窗内的预览按钮绑定事件 ---
+          document.getElementById("preview-edit-voice-btn").addEventListener("click", () => {
+            previewSelectedVoice(voiceSelectElement);
+          });
+
+          // ... (为礼簿封面图上传、预览、删除按钮绑定事件的逻辑保持不变) ...
+          const fileInput = document.getElementById("edit-cover-image-upload");
+          const preview = document.getElementById("edit-cover-preview");
+          const removeBtn = document.getElementById("remove-cover-btn");
+          // (后面的代码保持不变)...
+          fileInput.addEventListener("change", (event) => {
+            const file = event.target.files[0];
+            if (file) {
+              const reader = new FileReader();
+              reader.onload = (e) => {
+                preview.src = e.target.result;
+                preview.classList.remove("hidden");
+                shouldRemoveCover = false;
+                if (removeBtn) {
+                  removeBtn.textContent = "撤销选择";
+                  removeBtn.disabled = false;
+                }
+              };
+              reader.readAsDataURL(file);
+            }
+          });
+
+          if (removeBtn) {
+            removeBtn.onclick = () => {
+              shouldRemoveCover = true;
+              coverImageForUpdate = null;
+              preview.classList.add("hidden");
+              preview.src = "";
+              fileInput.value = "";
+              removeBtn.textContent = "礼簿封面图已删除";
+              removeBtn.disabled = true;
+            };
+          }
+        }
+
+        /**
+         * 触发删除当前事项的流程，需要密码确认。
+         */
+        async function deleteCurrentEvent() {
+          if (!currentEvent) return;
+
+          const content = `<p>此操作将永久删除事项 “<strong>${currentEvent.name}</strong>” 及其所有礼金记录，且无法恢复。</p>
+       <p class="mt-4">请输入管理密码以确认：</p>
+       <input type="password" id="delete-confirm-password" class="w-full p-2 border rounded mt-2 themed-ring">`;
+
+          showModal(`删除确认`, content, [
+            { text: "取消", class: "themed-button-secondary border px-4 py-2 rounded" },
+            {
+              text: "确认删除",
+              class: "themed-button-primary  text-white px-4 py-2 rounded", // 使用更醒目的红色按钮
+              handler: async () => {
+                const passwordInput = document.getElementById("delete-confirm-password").value;
+                if (hashPassword(passwordInput) !== currentEvent.passwordHash) {
+                  return showAlert("错误", "管理密码错误，删除操作已取消。");
+                }
+                try {
+                  const transaction = db.transaction(["events", "gifts"], "readwrite");
+                  const eventsStore = transaction.objectStore("events");
+                  const giftsStore = transaction.objectStore("gifts");
+                  const giftsIndex = giftsStore.index("eventId");
+
+                  // 删除所有关联的礼金记录
+                  const giftKeys = await promisifyRequest(giftsIndex.getAllKeys(currentEvent.id));
+                  giftKeys.forEach((key) => giftsStore.delete(key));
+
+                  // 删除事项本身
+                  eventsStore.delete(currentEvent.id);
+
+                  await new Promise((resolve) => (transaction.oncomplete = resolve));
+                  showAlert("成功", `事项 “${currentEvent.name}” 已被成功删除。`, false);
+                  showSetupScreen(); // 返回到设置界面
+                } catch (error) {
+                  console.error("删除事项时发生错误:", error);
+                  showAlert("删除失败", "删除过程中发生错误。");
+                }
+              },
+            },
+          ]);
+          setTimeout(() => document.getElementById("delete-confirm-password")?.focus(), 50);
+        }
+
+        // --- 工具与辅助函数 ---
+
+        const formatCurrency = (amount) => new Intl.NumberFormat("zh-CN", { style: "currency", currency: "CNY" }).format(amount || 0);
+        /**
+         * 使用浏览器语音合成API播报礼金信息。
+         * 如果事项设置了特定音色，则使用该音色。
+         * @param {string} name - 姓名。
+         * @param {number} amount - 金额。
+         */
+        function speakGift(name, amount) {
+          if (!isSpeechEnabled || !("speechSynthesis" in window)) return;
+
+          const textToSpeak = currentEvent.theme === "theme-solemn" ? `${name}，${amountToChinese(amount)}` : `${name} 贺礼 ${amountToChinese(amount)}`;
+          const utterance = new SpeechSynthesisUtterance(textToSpeak);
+          utterance.lang = "zh-CN";
+
+          // --- 新增：查找并设置指定的音色 ---
+          if (currentEvent.voiceName) {
+            const voices = speechSynthesis.getVoices();
+            const selectedVoice = voices.find((voice) => voice.name === currentEvent.voiceName);
+            if (selectedVoice) {
+              utterance.voice = selectedVoice;
+            }
+          }
+
+          speechSynthesis.speak(utterance);
+        }
+
+        /**
+         * 播放使用指定 <select> 元素中所选音色的语音预览。
+         * @param {HTMLSelectElement} selectElement - 包含音色选项的下拉框。
+         */
+        function previewSelectedVoice(selectElement) {
+          if (!("speechSynthesis" in window)) {
+            return showAlert("错误", "您的浏览器不支持语音播报功能。");
+          }
+
+          // 停止任何当前正在播放的语音，防止重叠
+          speechSynthesis.cancel();
+
+          const selectedVoiceName = selectElement.value;
+          const utterance = new SpeechSynthesisUtterance("张三贺礼五百元整");
+          utterance.lang = "zh-CN";
+
+          if (selectedVoiceName) {
+            const voices = speechSynthesis.getVoices();
+            const selectedVoice = voices.find((voice) => voice.name === selectedVoiceName);
+            if (selectedVoice) {
+              utterance.voice = selectedVoice;
+            }
+          }
+
+          speechSynthesis.speak(utterance);
+        }
+
+        /**
+         * 将数字金额转换为中文大写。
+         * @param {number|string} n - 数字金额。
+         * @returns {string} 中文大写金额。
+         */
+        function amountToChinese(n) {
+          if (typeof n !== "number" && typeof n !== "string") return "";
+          n = parseFloat(n);
+          if (isNaN(n) || n === null) return "";
+          if (n === 0) return "零元整";
+          let unit = "京亿万仟佰拾兆万仟佰拾亿仟佰拾万仟佰拾元角分",
+            str = "",
+            s = n.toString();
+          if (s.indexOf(".") > -1) s = (n * 100).toFixed(0);
+          else s += "00";
+          if (s.length > unit.length) return "金额过大";
+          unit = unit.substr(unit.length - s.length);
+          for (let i = 0; i < s.length; i++) str += "零壹贰叁肆伍陆柒捌玖".charAt(s.charAt(i)) + unit.charAt(i);
+          return str
+            .replace(/零(仟|佰|拾|角)/g, "零")
+            .replace(/(零)+/g, "零")
+            .replace(/零(兆|万|亿|元)/g, "$1")
+            .replace(/(兆|亿)万/g, "$1")
+            .replace(/(京|兆)亿/g, "$1")
+            .replace(/(京)兆/g, "$1")
+            .replace(/(亿)万/g, "$1")
+            .replace(/(京|兆|亿|仟|佰|拾)(万?)(.)/g, "$1$2$3")
+            .replace(/零元/g, "元")
+            .replace(/零分/g, "")
+            .replace(/零角/g, "零")
+            .replace(/元$/g, "元整")
+            .replace(/角$/g, "角整");
+        }
+
+        /**
+         * 为新建事项的表单设置默认的开始和结束时间。
+         */
+        function setDefaultTimes() {
+          const now = new Date();
+          const pad = (num) => num.toString().padStart(2, "0");
+          const currentDate = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+          const currentTime = `${pad(now.getHours())}:${pad(now.getMinutes())}`;
+          dom.startDateInput.value = currentDate;
+          dom.startTimeInput.value = currentTime;
+          dom.endDateInput.value = currentDate;
+          dom.endTimeInput.value = "23:59";
+        }
+
+        /**
+         * 读取 File 对象并转换为 Base64 字符串。
+         * @param {File} file - 要读取的文件。
+         * @returns {Promise<string>}
+         */
+        function readFileAsBase64(file) {
+          return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result);
+            reader.onerror = (error) => reject(error);
+            reader.readAsDataURL(file);
+          });
+        }
+
+        /**
+         * 检查礼簿封面图文件大小是否合法。
+         * @param {File} file - 文件对象。
+         * @returns {boolean}
+         */
+        function isCoverFileSizeValid(file) {
+          if (file.size > MAX_COVER_IMAGE_SIZE) {
+            showAlert("图片过大", `礼簿封面图文件大小不能超过 ${MAX_COVER_IMAGE_SIZE / 1024 / 1024}MB，请压缩后上传。`);
+            return false;
+          }
+          return true;
+        }
+
+        /**
+         * 获取并填充所有可用的中文语音到指定的 <select> 元素中。
+         * @param {HTMLSelectElement} selectElement - 用于填充音色的下拉框元素。
+         * @param {string} [selectedValue] - （可选）需要默认选中的音色名称。
+         */
+        function populateVoiceList(selectElement, selectedValue) {
+          const voices = speechSynthesis.getVoices().filter((v) => v.lang.startsWith("zh"));
+          if (!selectElement || voices.length === 0) return;
+
+          const currentVal = selectElement.value; // 保存当前可能已选择的值
+          selectElement.innerHTML = '<option value="">默认音色</option>';
+
+          voices.forEach((voice) => {
+            const option = document.createElement("option");
+            option.value = voice.name;
+            option.textContent = `${voice.name} (${voice.lang})`;
+            selectElement.appendChild(option);
+          });
+
+          // 尝试恢复之前的选择或设置传入的默认值
+          selectElement.value = selectedValue || currentVal || "";
+        }
+
+        // --- 事件监听器绑定 ---
+
+        /**
+         * 统一设置应用的所有事件监听器。
+         */
+        function bindEventListeners() {
+          // 设置界面
+          dom.createEventForm.addEventListener("submit", handleCreateEventSubmit);
+          dom.unlockEventBtn.addEventListener("click", () => {
+            const eventId = parseInt(dom.eventSelector.value, 10);
+            if (eventId) handleUnlockEvent(eventId);
+            else showAlert("提示", "请先选择一个事项。");
+          });
+
+          // 监听备注框的回车事件以快速提交 ---
+          dom.remarksInput.addEventListener("keydown", (e) => {
+            // 当用户按下 Enter 键，并且没有同时按下 Shift 键时 (Shift+Enter 仍用于换行)
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault(); // 阻止默认的回车换行行为
+              // 模拟点击提交按钮
+              dom.addGiftForm.querySelector('button[type="submit"]')?.click();
+            }
+          });
+
+          dom.coverImageUpload.addEventListener("change", (event) => {
+            const file = event.target.files[0];
+            if (file) {
+              const reader = new FileReader();
+              reader.onload = (e) => {
+                dom.coverPreview.src = e.target.result;
+                dom.coverPreview.classList.remove("hidden");
+              };
+              reader.readAsDataURL(file);
+            } else {
+              dom.coverPreview.src = "";
+              dom.coverPreview.classList.add("hidden");
+            }
+          });
+
+          // 主界面
+          dom.addGiftForm.addEventListener("submit", handleAddGiftSubmit);
+          dom.prevPageBtn.addEventListener("click", () => {
+            if (currentPage > 1) {
+              currentPage--;
+              render();
+            }
+          });
+          dom.nextPageBtn.addEventListener("click", () => {
+            const totalPages = Math.ceil(gifts.length / ITEMS_PER_PAGE) || 1;
+            if (currentPage < totalPages) {
+              currentPage++;
+              render();
+            }
+          });
+          dom.searchIcon.addEventListener("click", handleSearch);
+          dom.searchNameInput.addEventListener("keyup", (e) => e.key === "Enter" && handleSearch());
+          dom.printBtn.addEventListener("click", prepareForPrint);
+          dom.exportExcelBtn.addEventListener("click", exportToExcel);
+          dom.statsBtn.addEventListener("click", showStatistics);
+          dom.speechToggle.addEventListener("change", (e) => (isSpeechEnabled = e.target.checked));
+
+          // 礼簿点击事件委托
+          dom.giftBookContent.addEventListener("click", (e) => {
+            const nameCell = e.target.closest(".name-cell[data-gift-index]");
+            if (nameCell) {
+              const giftIndex = parseInt(nameCell.dataset.giftIndex, 10);
+              if (!isNaN(giftIndex)) showGiftDetailsModal(giftIndex);
+            }
+          });
+
+          // 事项切换下拉菜单
+          dom.eventSwitcherTrigger.addEventListener("click", (e) => {
+            e.stopPropagation();
+            const dropdown = dom.eventDropdown;
+            const isHidden = dropdown.classList.contains("hidden");
+            if (isHidden) {
+              dropdown.innerHTML = `
+                <a href="#" class="block px-4 py-2 text-sm themed-text font-semibold themed-link-hover" data-action="switch">切换/创建事项</a>
+                <a href="#" class="block px-4 py-2 text-sm themed-text font-semibold themed-link-hover" data-action="edit">设置此事项</a>
+                <a href="#" class="block px-4 py-2 text-sm themed-text font-semibold themed-link-hover" data-action="delete">删除此事项</a>`;
+            }
+            dropdown.classList.toggle("hidden");
+          });
+
+          dom.eventDropdown.addEventListener("click", (e) => {
+            e.preventDefault();
+            const action = e.target.dataset.action;
+            if (action) {
+              dom.eventDropdown.classList.add("hidden");
+              switch (action) {
+                case "switch":
+                  showSetupScreen();
+                  break;
+                case "edit":
+                  showEditEventInfoModal();
+                  break;
+                case "delete":
+                  deleteCurrentEvent();
+                  break;
+              }
+            }
+          });
+          // 为创建页面的语音预览按钮绑定事件
+          dom.previewCreateVoiceBtn.addEventListener("click", () => {
+            previewSelectedVoice(dom.eventVoiceSelect);
+          });
+
+          // 全局事件
+          window.addEventListener("click", () => dom.eventDropdown.classList.add("hidden"));
+
+          // 弹窗内事件委托 (处理搜索结果中的“查看详情”按钮)
+          dom.modalContainer.addEventListener("click", (e) => {
+            if (e.target.matches(".view-details-btn")) {
+              const giftIndex = parseInt(e.target.dataset.giftIndex, 10);
+              if (!isNaN(giftIndex)) {
+                closeModal();
+                // 延迟显示，确保上一个弹窗关闭动画完成
+                setTimeout(() => showGiftDetailsModal(giftIndex), 150);
+              }
+            }
+          });
+
+          //全局键盘快捷键监听 ---
+          document.addEventListener("keydown", (e) => {
+            // 快捷键 Ctrl + P 触发打印
+            if (e.ctrlKey && e.key.toLowerCase() === "p") {
+              e.preventDefault();
+              prepareForPrint();
+              return;
+            }
+
+            const isModalVisible = !dom.modalContainer.classList.contains("hidden");
+            const activeElement = document.activeElement;
+
+            // 如果弹窗可见, 则执行弹窗内的快捷键逻辑
+            if (isModalVisible) {
+              // Escape 键关闭弹窗
+              if (e.key === "Escape") {
+                e.preventDefault();
+                dom.modalActions.querySelector("button")?.click();
+              }
+              // Enter 键确认弹窗 (文本域除外)
+              if (e.key === "Enter" && activeElement.tagName !== "TEXTAREA") {
+                e.preventDefault();
+                dom.modalActions.querySelector("button:last-child")?.click();
+              }
+              return; // 弹窗打开时，不触发后续的全局快捷键
+            }
+
+            // --- 核心修复：全局回车提交礼金表单 ---
+            // 当按下回车键, 且主界面可见, 且当前焦点不在多行文本框时
+            if (e.key === "Enter" && !dom.mainScreen.classList.contains("hidden") && activeElement.tagName !== "TEXTAREA") {
+              const guestName = dom.guestNameInput.value.trim();
+              const giftAmount = dom.giftAmountInput.value.trim();
+
+              // 检查必填项（姓名和金额）是否已填写
+              if (guestName && giftAmount) {
+                // 阻止回车键的任何默认行为 (例如，如果焦点在某个按钮上)
+                e.preventDefault();
+                // 模拟点击“确认录入”按钮
+                dom.addGiftForm.querySelector('button[type="submit"]')?.click();
+              }
+            }
+          });
+        }
+
+        // --- 应用初始化 ---
+        function init() {
+          initDB();
+          setDefaultTimes();
+          bindEventListeners();
+          populateVoiceList(dom.eventVoiceSelect);
+          if (speechSynthesis.onvoiceschanged !== undefined) {
+            speechSynthesis.onvoiceschanged = () => populateVoiceList(dom.eventVoiceSelect);
+          }
+        }
+
+        init(); // 启动应用
+      });
+    </script>
+  </body>
+</html>
