@@ -91,8 +91,6 @@
         flex: 1;
       }
 
-     
-
       .gift-book-row {
         display: flex;
         width: 100%;
@@ -136,8 +134,10 @@
         color: #333;
         padding: 15px 0;
         cursor: pointer;
-        flex: 1;
+        flex: 5;
         text-align: center;
+        white-space: nowrap;
+        min-height: 8em;
       }
 
       .type-cell {
@@ -164,7 +164,7 @@
       }
 
       .amount-numeric,
-      .name-remarks {
+      .mark{
         color: #555;
         letter-spacing: 1px;
         writing-mode: lr;
@@ -172,11 +172,24 @@
         font-size: clamp(10px, 1.3vw, 14px);
         flex: 1;
       }
-      .name-remarks {
-        color: var(--primary-color);
-        position: absolute;
-        bottom: 0.2vw;
-        white-space: nowrap;
+
+      .mark{
+           color: var(--primary-color);
+          white-space: nowrap;
+          line-height: 1.2;
+          height: 2.5em;
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+          position: absolute;
+          bottom: 1vw;
+      }
+      .themed-edit-area {
+        background-color: var(--primary-bg-light);
+        border: 1px solid var(--primary-border-color);
+        padding: 1rem;
+        border-radius: 0.5rem;
+        width: 100%;
       }
 
       input[type="number"]::-webkit-inner-spin-button,
@@ -247,7 +260,7 @@
         display: none;
       }
       #modal.modal-large {
-        max-width: 95vw;
+        max-width: 1200px;
         width: 95vw;
       }
       .gridjs-wrapper {
@@ -259,7 +272,7 @@
       }
       @media (max-width: 700px) {
         .amount-numeric,
-        .name-remarks {
+        .mark {
           position: relative;
           writing-mode: tb;
         }
@@ -327,7 +340,7 @@
           font-weight: bold;
           font-size: 38px;
         }
-       
+
         .print-footer {
           flex-shrink: 0;
           display: flex;
@@ -395,28 +408,26 @@
         .book-cell {
           font-size: 18pt !important;
         }
-        .name-cell .name{
+        .name-cell .name {
           padding: 0;
         }
-         .name-cell:hover{
+        .name-cell:hover {
           background-color: transparent;
-         }
+        }
         .book-cell:not(.type-cell) {
           font-family: "KaiTi";
         }
         .theme-solemn #print-view {
           filter: grayscale(100%);
         }
-        .name-remarks{
+        .mark{
           display: none;
         }
         .amount-chinese.scale,
-        .name.scale 
-        {
+        .name.scale {
           font-size: 14pt;
           letter-spacing: -2px;
           padding: 5px 0;
-         
         }
         .print-book-content .gift-book-row:nth-child(3) {
           max-height: 82mm;
@@ -959,7 +970,6 @@
             await loadGiftsForCurrentEvent();
           } catch (error) {
             closeModal();
-            console.error("录入礼金失败:", error);
             showAlert("错误", "录入礼金失败。");
           }
         }
@@ -972,6 +982,7 @@
          */
         function requestAdminPassword(title, message) {
           return new Promise((resolve) => {
+            dom.modal.classList.remove("modal-large");
             const content = `<p class="text-sm text-gray-600 mb-3">${message}</p>
                        <input type="password" id="override-password" class="w-full p-2 border rounded themed-ring" placeholder="请输入管理密码">`;
             const actions = [
@@ -1023,8 +1034,15 @@
             const nameCell = document.createElement("div");
             nameCell.className = "book-cell name-cell";
             if (gift?.data) {
-              nameCell.innerHTML = `<div class="name${gift.data.name.length > 4 ? " scale" : ""}">${gift.data.name}</div>
-                              ${gift.data.remarks ? '<div class="name-remarks">*已备注</div>' : ""}`;
+              const isModified = gift.data.history && gift.data.history.length > 0;
+              const isRemarks = gift.data.remarks;
+
+              let statusIndicators = `<div class="mark">
+                ${isRemarks && '<p>*已备注</p>' || ''}
+                ${isModified && '<p>*已修改</p>' || ''}
+              </div>`;
+              
+              nameCell.innerHTML = `<div class="name${gift.data.name.length > 4 ? " scale" : ""}">${gift.data.name}</div>${statusIndicators}`;
               nameCell.dataset.giftIndex = giftIndex;
             }
             nameRow.appendChild(nameCell);
@@ -1041,7 +1059,7 @@
             amountCell.dataset.giftIndex = giftIndex;
             if (gift?.data) {
               const amountChinese = amountToChinese(gift.data.amount);
-              amountCell.innerHTML = `<div class="amount-chinese${amountChinese.length >16 ? " scale" : ""}">${amountChinese}</div>
+              amountCell.innerHTML = `<div class="amount-chinese${amountChinese.length > 16 ? " scale" : ""}">${amountChinese}</div>
                                 <div class="amount-numeric${Math.abs(gift.data.amount).toString().length > 8 ? " scale" : ""}">¥${gift.data.amount}</div>`;
             }
             amountRow.appendChild(amountCell);
@@ -1109,10 +1127,17 @@
           dom.modalTitle.innerHTML = title;
           dom.modalContent.innerHTML = content;
           dom.modalActions.innerHTML = "";
+
+          dom.modalActions.classList.remove("hidden");
+
           actions.forEach((action) => {
             const button = document.createElement("button");
             button.textContent = action.text;
             button.className = action.class;
+            // --- 新增修复：为按钮增加 ID，以便其他函数可以引用 ---
+            if (action.id) {
+              button.id = action.id;
+            }
             button.onclick = () => {
               action.handler?.();
               if (!action.keepOpen) closeModal();
@@ -1129,8 +1154,23 @@
           document.body.style.overflow = "auto"; // 恢复背景滚动
         }
 
-        function showAlert(title, message, isError = true) {
-          showModal(title, `<p>${message}</p>`, [{ text: "确定", class: "themed-button-primary px-4 py-2 rounded" }]);
+        /**
+         * 显示一个提示弹窗。
+         * @param {string} title - 弹窗标题
+         * @param {string} message - 弹窗内容
+         * @param {boolean} [isError=true] - 是否为错误提示（目前仅影响样式）
+         * @param {function} [callback] - 用户点击“确定”后执行的回调函数
+         */
+        function showAlert(title, message,  callback = null) {
+          showModal(title, `<p>${message}</p>`, [
+            {
+              text: "确定",
+              class: "themed-button-primary px-4 py-2 rounded",
+              handler: () => {
+                if (typeof callback === "function") callback();
+              },
+            },
+          ]);
         }
 
         /**
@@ -1191,33 +1231,332 @@
         }
 
         /**
-         * 显示单个礼金记录的详情，并提供修改备注的功能。
-         * @param {number} giftIndex - 礼金记录在 `gifts` 数组中的索引。
+         * 显示礼金详情。根据是否有修改记录，显示简单弹窗或带时间轴的大弹窗。
+         * @param {number} giftIndex - 索引
          */
         function showGiftDetailsModal(giftIndex) {
           const giftObject = gifts[giftIndex];
           if (!giftObject) return;
-          const { data: gift } = giftObject;
+          const g = giftObject.data;
+          const hasHistory = g.history && g.history.length > 0;
 
-          const content = `
-      <div class="space-y-2 text-left">
-        <p><strong>姓名:</strong> ${gift.name}</p>
-        <p><strong>金额:</strong> ${formatCurrency(gift.amount)} (${gift.type})</p>
-        <div id="remarks-container">
-          <p><strong>备注:</strong>
-            <span class="pl-2">${gift.remarks || "无"}</span>
-            <button id="edit-remarks-btn" class="ml-2 themed-text hover:underline">修改</button>
-          </p>
-        </div>
-        <p><strong>录入时间:</strong> ${new Date(gift.timestamp).toLocaleString("zh-CN")}</p>
-      </div>`;
-          showModal(`${gift.name} 的礼金信息`, content, [{ text: "关闭", class: "border themed-button-secondary px-4 py-2 rounded" }]);
+          // 1. 准备左侧详情区域的基础 HTML (包含纠错/修改按钮)
+          // 使用特定的 ID 标记姓名、金额、类型区域，方便后续替换为输入框
+          const detailsHtml = `
+            <div class="space-y-4 text-left h-full flex flex-col" id="current-details-container" data-gift-index="${giftIndex}">
+                <h4 class="font-bold text-lg border-b pb-2 mb-2">当前记录信息</h4>
+                
+                <!-- START: 修改姓名区域 -->
+                <div id="name-display-area" class="flex justify-between items-center p-2 hover:bg-gray-50 rounded">
+                    <div><strong>姓名:</strong> <span class="text-lg ml-2">${g.name}</span></div>
+                    <button id="btn-correct-name" class="text-sm text-blue-600 hover:underline px-2 py-1">纠错</button>
+                </div>
+                <!-- END: 修改姓名区域 -->
 
-          document.getElementById("edit-remarks-btn").onclick = () => enableRemarkEditing(giftObject, giftIndex);
+                <!-- START: 修改金额区域 -->
+                <div id="amount-display-area" class="flex justify-between items-center p-2 hover:bg-gray-50 rounded">
+                    <div>
+                        <p><strong>金额:</strong> <span class="font-bold themed-text text-lg ml-2">${formatCurrency(g.amount)}</span></p>
+                        <p class="text-sm text-gray-500 mt-1"><strong>类型:</strong> ${g.type}</p>
+                    </div>
+、                    <button id="btn-modify-amount" class="text-sm text-blue-600 hover:underline px-2 py-1">修改</button>
+                </div>
+                <!-- END: 修改金额区域 -->
+                
+                <!-- START: 修改备注区域 -->
+                <div id="remarks-display-area" class="p-2 hover:bg-gray-50 rounded">
+                    <div class="flex justify-between items-start">
+                        <strong>备注:</strong>
+、                        <button id="btn-edit-remarks" class="text-sm text-blue-600 hover:underline px-2 py-1">修改</button>
+                    </div>
+                    <p class="pl-2 mt-1 text-gray-700 bg-gray-50 p-2 rounded">${g.remarks || "（无备注）"}</p>
+                </div>
+                <!-- END: 修改备注区域 -->
+                
+                <div class="mt-auto pt-4 text-xs text-gray-400 border-t">
+                    最新录入/修改时间: ${new Date(g.timestamp).toLocaleString("zh-CN")}
+                </div>
+            </div>`;
+
+          // 2. 根据是否有历史，构建弹窗内容
+          let modalContent = "";
+          if (hasHistory) {
+            dom.modal.classList.add("modal-large"); // 使用大弹窗
+            const timelineHtml = generateTimelineHTML(g.history, g); // 生成时间轴
+            modalContent = `
+                <div class="grid grid-cols-1 md:grid-cols-5 gap-6 h-[60vh]">
+                    <div class="md:col-span-2 border-r pr-4 overflow-y-auto">${detailsHtml}</div>
+                    <div class="md:col-span-3 pl-2 overflow-y-auto bg-gray-50 rounded-lg p-4">
+                        <h4 class="font-bold text-lg border-b pb-2 mb-4 flex justify-between items-center">
+                            <span>历史修改痕迹</span>
+                        </h4>
+                        ${timelineHtml}
+                    </div>
+                </div>`;
+          } else {
+            dom.modal.classList.remove("modal-large"); // 使用默认小弹窗
+            modalContent = detailsHtml;
+          }
+
+          // 3. 显示弹窗
+          showModal(`${g.name} 的礼金详情 ${hasHistory ? '<p class="text-sm text-orange-600 font-normal">(警告：此宾客数据存在修改，请自行验证合法性！)</p>' : ""}`, modalContent, [
+            { text: "关闭", class: "themed-button-secondary border px-4 py-2 rounded" },
+          ]);
+
+          // 绑定查看原始记录按钮事件 (如果有历史)
+          if (hasHistory) {
+            bindViewOriginalEvents(g.history, giftIndex);
+          }
         }
 
         /**
-         * 在详情弹窗中，将备注显示区域替换为可编辑的文本域。
+         * 生成时间轴 HTML
+         */
+        function generateTimelineHTML(history, currentGift) {
+          // 倒序，最新的在最上面
+          const reversedHistory = [...history].reverse();
+          return `
+                <ul class="space-y-4 border-l-2 border-gray-300 ml-2">
+                    ${reversedHistory
+                      .map(
+                        (record, index) => `
+                        <li class="relative pl-6 pb-4">
+                            <div class="absolute w-3 h-3 bg-gray-400 rounded-full -left-[7px] top-1 border-2 border-white"></div>
+                            <div class="text-sm text-gray-500">${new Date(record.timestamp).toLocaleString("zh-CN")}</div>
+                            <div class="font-medium text-gray-800 mt-1">${record.changeLog}</div>
+                            ${
+                              index === reversedHistory.length - 1
+                                ? `<button class="btn-view-original mt-2 text-xs bg-gray-200 hover:bg-gray-300 px-2 py-1 rounded text-gray-700" data-history-index="0">查看最原始记录</button>`
+                                : `<button class="btn-view-snapshot mt-2 text-xs text-blue-500 hover:underline" data-history-index="${history.length - 1 - index}">查看此版本快照</button>`
+                            }
+                        </li>
+                    `
+                      )
+                      .join("")}
+                    <!-- 当前状态标记 -->
+                    <li class="relative pl-6">
+                        <div class="absolute w-3 h-3 bg-green-500 rounded-full -left-[7px] top-1 border-2 border-white"></div>
+                        <div class="text-sm text-gray-500">当前状态 (${new Date(currentGift.timestamp).toLocaleString("zh-CN")})</div>
+                    </li>
+                </ul>
+            `;
+        }
+
+        /**
+         * 绑定查看历史快照的事件
+         */
+        /**
+         * 绑定查看历史快照的事件
+         * @param {Array} history - 历史记录数组
+         * @param {number} giftIndex - 当前礼金记录在全局 gifts 数组中的索引
+         */
+        function bindViewOriginalEvents(history, giftIndex) {
+          const showSnapshot = (historyIndex) => {
+            const snapshot = history[historyIndex].snapshot;
+            const content = `
+                    <div class="space-y-2 p-4 bg-gray-100 rounded text-left">
+                        <p><strong>姓名:</strong> ${snapshot.name}</p>
+                        <p><strong>金额:</strong> ${formatCurrency(snapshot.amount)} (${snapshot.type})</p>
+                        <p><strong>备注:</strong> ${snapshot.remarks || "无"}</p>
+                        <p class="text-xs text-gray-500 border-t pt-2 mt-2">此记录于 ${new Date(history[historyIndex].timestamp).toLocaleString()} 被修改存档。</p>
+                    </div>
+                `;
+
+            // --- START: 新增修复 ---
+            // 同样强制快照弹窗使用小窗口
+            dom.modal.classList.remove("modal-large");
+
+            showModal("历史记录快照", content, [
+              {
+                text: "返回详情",
+                class: "themed-button-secondary border px-4 py-2 rounded",
+                // 关键修复：handler 不再是 closeModal，而是重新调用详情页渲染函数
+                handler: () => {
+                  showGiftDetailsModal(giftIndex);
+                },
+                keepOpen: true, // 告诉 showModal 不要自动关闭
+              },
+            ]);
+            // --- END: 新增修复 ---
+          };
+
+          document.querySelectorAll(".btn-view-original, .btn-view-snapshot").forEach((btn) => {
+            btn.onclick = (e) => showSnapshot(parseInt(e.target.dataset.historyIndex));
+          });
+        }
+
+        /**
+         * 激活内联修改模式 (将显示区域替换为输入框和保存/取消按钮)
+         * @param {number} giftIndex
+         * @param {'name'|'amount'|'remarks'} fieldType - 要修改的字段类型
+         */
+        function enableInlineEdit(giftIndex, fieldType) {
+          const g = gifts[giftIndex].data;
+          let targetAreaId, editHtml, saveHandler;
+
+          // --- 修复1: 禁用其他修改按钮，防止并发修改 ---
+          const allButtons = ["btn-correct-name", "btn-modify-amount", "btn-edit-remarks"];
+          allButtons.forEach((btnId) => {
+            const btn = document.getElementById(btnId);
+            if (btn) {
+              btn.disabled = true;
+              btn.classList.add("opacity-50", "cursor-not-allowed");
+            }
+          });
+
+          // 通用的取消操作：重新渲染详情弹窗，所有状态都会恢复
+          const cancelHandler = () => showGiftDetailsModal(giftIndex);
+
+          // --- 修复2: 使用主题化的按钮样式 ---
+          const cancelBtnHtml = `<button id="inline-cancel" class="text-sm px-3 py-1 rounded themed-button-secondary border">取消</button>`;
+          const saveBtnHtml = `<button id="inline-save" class="text-sm px-3 py-1 rounded themed-button-primary">验证并保存</button>`;
+
+          // 根据修改类型，定义HTML和保存逻辑
+          if (fieldType === "name") {
+            targetAreaId = "name-display-area";
+            editHtml = `
+                    <div class="themed-edit-area">
+                        <label>纠错姓名</label>
+                        <input type="text" id="inline-edit-name" value="${g.name}" class="w-full p-2 border rounded themed-ring mb-2">
+                        <div class="flex justify-end space-x-2">${cancelBtnHtml}${saveBtnHtml}</div>
+                    </div>`;
+            saveHandler = async () => {
+              const newName = document.getElementById("inline-edit-name").value.trim();
+              if (!newName || newName === g.name) return cancelHandler(); // 无变化或为空则取消
+              const changeLog = `将姓名由 “${g.name}” 更正为 “${newName}”`;
+              await performUpdateWithHistory(giftIndex, { name: newName }, changeLog);
+            };
+          } else if (fieldType === "amount") {
+            targetAreaId = "amount-display-area";
+            editHtml = `
+                    <div class="themed-edit-area">
+                        <label>修改金额与类型</label>
+                        <input type="number" id="inline-edit-amount" value="${g.amount}" min="0" step="0.01" class="w-full p-2 border rounded themed-ring mb-2">
+                        <div class="flex flex-wrap gap-x-3 gap-y-1 mb-2">
+                            ${["现金", "支付宝", "微信", "其他"]
+                              .map(
+                                (type) => `
+                                <label class="flex items-center text-sm font-normal"><input type="radio" name="inline-edit-type" value="${type}" ${
+                                  g.type === type ? "checked" : ""
+                                } class="mr-1 themed-ring">${type}</label>
+                            `
+                              )
+                              .join("")}
+                        </div>
+                        <div class="flex justify-end space-x-2">${cancelBtnHtml}${saveBtnHtml}</div>
+                    </div>`;
+            saveHandler = async () => {
+              const newAmount = parseFloat(document.getElementById("inline-edit-amount").value);
+              const newType = document.querySelector('input[name="inline-edit-type"]:checked').value;
+              if (isNaN(newAmount) || newAmount < 0) return showAlert("错误", "请输入有效金额");
+
+              if (newAmount === g.amount && newType === g.type) return cancelHandler(); // 无变化则取消
+
+              let logs = [];
+              if (newAmount !== g.amount) logs.push(`金额由 ${g.amount} 修改为 ${newAmount}`);
+              if (newType !== g.type) logs.push(`类型由 ${g.type} 修改为 ${newType}`);
+
+              await performUpdateWithHistory(giftIndex, { amount: newAmount, type: newType }, logs.join("，"));
+            };
+          } else if (fieldType === "remarks") {
+            targetAreaId = "remarks-display-area";
+            editHtml = `
+                    <div class="themed-edit-area">
+                        <label>修改备注</label>
+                        <textarea id="inline-edit-remarks" class="w-full p-2 border rounded themed-ring mb-2" rows="3">${g.remarks || ""}</textarea>
+                        <div class="flex justify-end space-x-2">${cancelBtnHtml}${saveBtnHtml}</div>
+                    </div>`;
+            saveHandler = async () => {
+              const newRemarks = document.getElementById("inline-edit-remarks").value.trim();
+              if (newRemarks === (g.remarks || "")) return cancelHandler(); // 无变化则取消
+
+              // 根据备注内容生成更智能的日志
+              const oldRemarksText = g.remarks || "（空）";
+              const newRemarksText = newRemarks || "（空）";
+              const changeLog = `将备注由 “${oldRemarksText}” 修改为 “${newRemarksText}”`;
+
+              await performUpdateWithHistory(giftIndex, { remarks: newRemarks }, changeLog);
+            };
+          }
+
+          // 执行DOM替换和事件绑定
+          const targetArea = document.getElementById(targetAreaId);
+          if (targetArea) {
+           targetArea.innerHTML = editHtml;// 将显示区域替换为修改区域
+            document.getElementById("inline-cancel").onclick = cancelHandler;
+            document.getElementById("inline-save").onclick = saveHandler;
+            // 隐藏主弹窗的“关闭”按钮，避免用户在修改时关闭弹窗导致状态混乱
+            document.getElementById("modal-actions").classList.add("hidden");
+          }
+        }
+
+        /**
+         * 核心：执行带留痕的更新操作
+         * 1. 验证密码 -> 2. 创建快照 -> 3. 更新数据 -> 4. 保存DB -> 5. 刷新UI
+         */
+        async function performUpdateWithHistory(giftIndex, newFields, changeLogText) {
+          // 1. 密码验证
+          const authorized = await requestAdminPassword("修改确认", "此修改将被永久记录在案。请输入管理密码以继续。");
+
+          if (!authorized) {
+             showAlert("错误", "管理密码不正确，修改未保存。",  () => {
+              showGiftDetailsModal(giftIndex);
+            });
+            return;
+          }
+
+          const giftObject = gifts[giftIndex];
+          const currentData = { ...giftObject.data }; // 浅拷贝当前数据作为快照基础
+          const now = new Date().toISOString();
+
+          // 2. 创建历史记录条目 (Snapshot 仅包含核心数据，不包含之前的 history，防止无限嵌套)
+          const snapshot = {
+            name: currentData.name,
+            amount: currentData.amount,
+            type: currentData.type,
+            remarks: currentData.remarks,
+            timestamp: currentData.timestamp, // 记录这个快照当时的时间
+          };
+
+          const historyEntry = {
+            timestamp: now, // 修改发生的时刻
+            changeLog: changeLogText,
+            snapshot: snapshot,
+          };
+
+          // 3. 准备新数据
+          const updatedData = {
+            ...currentData,
+            ...newFields, // 应用新字段
+            timestamp: now, // 更新主记录时间
+            history: currentData.history ? [...currentData.history, historyEntry] : [historyEntry], // 追加历史
+          };
+
+          // 4. 加密并保存到数据库
+          try {
+            const encryptedData = encryptData(updatedData, currentPassword);
+            const recordToUpdate = { ...giftObject, encryptedData };
+            await promisifyRequest(db.transaction("gifts", "readwrite").objectStore("gifts").put(recordToUpdate));
+
+            // 5. 更新内存和 UI
+            gifts[giftIndex].data = updatedData;
+            render(); // 刷新礼簿主界面（更新金额和“*已修改”标记）
+            closeModal();
+
+            // 短暂延迟后重新打开详情页，展示更新后的状态和时间轴
+            setTimeout(() => {
+              showGiftDetailsModal(giftIndex);
+              // 可以加一个自动消失的提示
+              // showToast("修改已保存并留痕");
+            }, 300);
+          } catch (error) {
+            console.error("保存失败", error);
+            showAlert("系统错误", "保存修改记录时失败。");
+          }
+        }
+
+        /**
+         * 在详情弹窗中，将备注显示区域替换为可修改的文本域。
          */
         function enableRemarkEditing(giftObject, giftIndex) {
           const remarksContainer = document.getElementById("remarks-container");
@@ -1482,7 +1821,7 @@
           const tableData = gifts.map((g) => [g.data.name, g.data.amount, g.data.remarks || "无", g.data.type, new Date(g.data.timestamp).toLocaleString("zh-CN")]);
 
           new gridjs.Grid({
-            columns: ["姓名", "金额 (元)", "备注", "收款类型", "登记时间"],
+            columns: ["姓名", "金额 (元)", "备注", "收款类型", "录入时间"],
             data: tableData,
             search: true,
             sort: true,
@@ -1537,7 +1876,7 @@
           let coverImageForUpdate = currentEvent.coverImage;
           let shouldRemoveCover = false;
 
-          // --- 修改：在HTML中增加了音色选择的 <select> 和预览按钮 ---
+          // --- 修改：在HTML中增加了“语音播报起报金额”的设置项 ---
           const content = `
     <div class="space-y-4 text-left">
         <div>
@@ -1545,7 +1884,6 @@
             <input type="text" id="edit-event-name-input" class="w-full mt-1 p-2 border rounded themed-ring" value="${currentEvent.name}">
         </div>
         
-        <!-- 修改：语音音色设置，增加了预览按钮 -->
         <div>
             <label for="edit-event-voice" class="block text-sm font-medium text-gray-700">语音播报音色</label>
             <div class="flex items-center gap-2 mt-1">
@@ -1556,25 +1894,33 @@
             </div>
         </div>
 
+        <!-- START: 新增起报金额设置 -->
+        <div>
+            <label for="edit-min-speech-amount" class="block text-sm font-medium text-gray-700">语音播报起报金额 (元)</label>
+            <input type="number" id="edit-min-speech-amount" min="0" step="1" class="w-full mt-1 p-2 border rounded themed-ring" value="${currentEvent.minSpeechAmount || 0}">
+            <p class="text-xs text-gray-500 mt-1">只有大于或等于此金额的礼金才会被播报。设置为0则全部播报。</p>
+        </div>
+        <!-- END: 新增起报金额设置 -->
+
         <div>
             <label class="block text-sm font-medium text-gray-700">礼簿(打印/导出PDF)封面图</label>
             <img id="edit-cover-preview" src="${currentEvent.coverImage || ""}" alt="封面预览" class="my-2 rounded-lg ${!currentEvent.coverImage ? "hidden" : ""} max-w-full h-auto max-h-48 object-contain">
-            <p class="text-xs text-gray-500 mt-2">尺寸建议842 x 595px, 格式jpg/PNG, 大小不超过2M。</p>
             <input type="file" id="edit-cover-image-upload" accept="image/*" class="w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-gray-200 file:text-gray-700 hover:file:bg-gray-300"/>
             ${currentEvent.coverImage ? '<button id="remove-cover-btn" class="mt-2 text-sm text-red-600 hover:underline">删除当前礼簿封面图</button>' : ""}
+             <p class="text-xs text-gray-500 mt-2">尺寸建议842 x 595px, 格式jpg/PNG, 大小不超过2M。</p>
         </div>
     </div>`;
 
-          // ... (showModal 调用和保存逻辑保持不变) ...
           showModal("设置事项", content, [
             { text: "取消", class: "themed-button-secondary border px-4 py-2 rounded" },
             {
               text: "保存",
               class: "themed-button-primary px-4 py-2 rounded",
               handler: async () => {
-                // ... 这部分保存逻辑完全不变 ...
                 const newName = document.getElementById("edit-event-name-input").value.trim();
                 const newVoiceName = document.getElementById("edit-event-voice").value;
+                // --- 新增：获取起报金额的值 ---
+                const newMinSpeechAmount = parseFloat(document.getElementById("edit-min-speech-amount").value) || 0;
                 if (!newName) return showAlert("错误", "事项名称不能为空！");
 
                 const newCoverFile = document.getElementById("edit-cover-image-upload").files[0];
@@ -1590,13 +1936,16 @@
                   coverImageForUpdate = null;
                 }
 
-                const updatedEvent = { ...currentEvent, name: newName, voiceName: newVoiceName, coverImage: coverImageForUpdate };
+                // --- 修改：在要更新的事项对象中加入起报金额 ---
+                const updatedEvent = { ...currentEvent, name: newName, voiceName: newVoiceName, coverImage: coverImageForUpdate, minSpeechAmount: newMinSpeechAmount };
                 try {
                   await promisifyRequest(db.transaction("events", "readwrite").objectStore("events").put(updatedEvent));
 
                   currentEvent.name = newName;
                   currentEvent.voiceName = newVoiceName;
                   currentEvent.coverImage = coverImageForUpdate;
+                  // --- 新增：同步更新内存中的当前事项数据 ---
+                  currentEvent.minSpeechAmount = newMinSpeechAmount;
                   dom.currentEventTitleEl.textContent = newName;
 
                   const sessionData = JSON.parse(sessionStorage.getItem("activeEventSession"));
@@ -1617,16 +1966,14 @@
             speechSynthesis.onvoiceschanged = () => populateVoiceList(voiceSelectElement, currentEvent.voiceName);
           }
 
-          // --- 新增：为弹窗内的预览按钮绑定事件 ---
           document.getElementById("preview-edit-voice-btn").addEventListener("click", () => {
             previewSelectedVoice(voiceSelectElement);
           });
 
-          // ... (为礼簿封面图上传、预览、删除按钮绑定事件的逻辑保持不变) ...
           const fileInput = document.getElementById("edit-cover-image-upload");
           const preview = document.getElementById("edit-cover-preview");
           const removeBtn = document.getElementById("remove-cover-btn");
-          // (后面的代码保持不变)...
+
           fileInput.addEventListener("change", (event) => {
             const file = event.target.files[0];
             if (file) {
@@ -1713,7 +2060,8 @@
          * @param {number} amount - 金额。
          */
         function speakGift(name, amount) {
-          if (!isSpeechEnabled || !("speechSynthesis" in window)) return;
+          const minAmount = currentEvent.minSpeechAmount || 0;
+          if (!isSpeechEnabled || !("speechSynthesis" in window) || amount < minAmount) return;
           const ttsText = amountToChinese(amount).replace(/陆/g, "六");
 
           const textToSpeak = currentEvent.theme === "theme-solemn" ? `${name}，${ttsText}` : `${name} 贺礼 ${ttsText}`;
@@ -1971,6 +2319,14 @@
             previewSelectedVoice(dom.eventVoiceSelect);
           });
 
+          dom.modalContent.onclick = (e) => {
+           const container = e.target.closest("[data-gift-index]");
+          if (!container) return;
+          const giftIndex = parseInt(container.dataset.giftIndex, 10);     
+            if (e.target.id === "btn-correct-name") enableInlineEdit(giftIndex, "name");
+            if (e.target.id === "btn-modify-amount") enableInlineEdit(giftIndex, "amount");
+            if (e.target.id === "btn-edit-remarks") enableInlineEdit(giftIndex, "remarks");
+          };
           // 全局事件
           window.addEventListener("click", () => dom.eventDropdown.classList.add("hidden"));
 
